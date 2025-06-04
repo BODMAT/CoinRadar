@@ -1,0 +1,39 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+@custom-variant dark (&:where(.dark, .dark *));
+@layer base {
+    .transitioned {
+        @apply transition-all duration-1500 ease-[cubic-bezier(0.075,0.82,0.165,1)];
+    }
+    .myContainer {
+        @apply max-w-[1300px] mx-auto box-content px-[15px];
+    }
+
+    .fontText {
+        font-family: "Montserrat", sans-serif;
+        font-optical-sizing: auto;
+        font-style: normal;
+    }
+
+    .fontTitle {
+        font-family: "Dancing Script", cursive;
+        font-optical-sizing: auto;
+        font-style: normal;
+    }
+
+    :root {
+        --color-text: #000;
+        --color-fixed: linear-gradient(90deg,  #7c48c4,#4D4962);
+        --color-background: linear-gradient(135deg, #f5e8ff, #ecd9ff); 
+        --color-card: #e4ccff;
+}
+
+    :where(.dark, .dark *) {
+        --color-text: #fff;
+        --color-fixed: linear-gradient(135deg, #24003e, #2c0e42); 
+        --color-background: linear-gradient(90deg, #1a002c, #2e004f);
+        --color-card: #3f0066; 
+    }
+
+}
