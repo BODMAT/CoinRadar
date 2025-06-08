@@ -2,6 +2,7 @@ import { useApplyTheme } from "../../hooks/useApplyTheme";
 import { Background } from "../Background/RotatingArrows";
 import { FixedFooter } from "../FixedFooter/FixedFooter";
 import { FixedHeader } from "../FixedHeader/FixedHeader";
+import { HomePage } from "../HomePage/HomePage";
 
 export function App() {
   useApplyTheme();
@@ -11,7 +12,7 @@ export function App() {
         <FixedHeader />
         <main className="myContainer pt-[80px] text-[var(--color-text)] transitioned">
           <section id="section1">
-            {Array(1000).fill("AAAA ").join("")}
+            <HomePage />
           </section>
           <section id="section2">
             {Array(1000).fill("Lorem ").join("")}

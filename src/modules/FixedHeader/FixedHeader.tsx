@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { menu, type MenuItem } from "../../data/data";
 import { useBurgerMenu } from "../../hooks/useBurgerMenu";
 import { scrollToSectionById } from "../../utils/functions";
+import { Auth } from "../Auth/Auth";
 
 export function FixedHeader() {
     const { isBurgerOpen, toggleBurger, isMobile } = useBurgerMenu();
@@ -19,19 +20,25 @@ export function FixedHeader() {
         };
     }, [isBurgerOpen, isMobile]);
 
-    const renderMenuButtons = (closeBurger = false) =>
-        menu.map((item: MenuItem, index) => (
-            <button
-                key={index}
-                onClick={() => {
-                    if (closeBurger) toggleBurger();
-                    scrollToSectionById(item.link);
-                }}
-                className="text-white cursor-pointer hover:scale-105 transitioned"
-            >
-                {item.name}
-            </button>
-        ));
+    const renderMenuButtons = (closeBurger = false) => {
+        return (
+            <>
+                {menu.map((item: MenuItem, index) => (
+                    <button
+                        key={index}
+                        onClick={() => {
+                            if (closeBurger) toggleBurger();
+                            scrollToSectionById(item.link);
+                        }}
+                        className="text-white cursor-pointer hover:scale-105 transitioned"
+                    >
+                        {item.name}
+                    </button>
+                ))}
+                <Auth />
+            </>
+        )
+    }
 
     return (
         <header className="relative z-[100]">
@@ -45,7 +52,7 @@ export function FixedHeader() {
                     {!isMobile ? (
                         <div className="flex gap-10 items-center">{renderMenuButtons()}</div>
                     ) : (
-                        <button onClick={toggleBurger} className="group w-[36px] rounded-lg border-0">
+                        <button onClick={toggleBurger} className="group w-[36px] rounded-lg border-0 cursor-pointer">
                             <div className="grid justify-items-center gap-1.5">
                                 {["rotate-45 translate-y-2.5", "scale-x-0", "-rotate-45 -translate-y-2.5"].map(
                                     (cls, i) => (

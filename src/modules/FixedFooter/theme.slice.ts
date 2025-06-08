@@ -14,11 +14,11 @@ const themeSlice = createSlice({
     reducers: {
         toggleTheme(state) {
             state.theme = state.theme === 'light' ? 'dark' : 'light';
-            localStorage.setItem('theme-storage-caretrack', state.theme);
+            localStorage.setItem('theme-storage-coinradar', state.theme);
         },
         setTheme(state, action: PayloadAction<Theme>) {
             state.theme = action.payload;
-            localStorage.setItem('theme-storage-caretrack', state.theme);
+            localStorage.setItem('theme-storage-coinradar', state.theme);
         },
     },
 });

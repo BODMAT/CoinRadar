@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 public/*.psd
+.env
+.env.production

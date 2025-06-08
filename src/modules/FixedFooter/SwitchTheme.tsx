@@ -1,8 +1,8 @@
-import { useDispatch } from "react-redux";
 import { toggleTheme } from "./theme.slice";
+import { useAppDispatch } from "../../store";
 
 export function SwitchTheme() {
-    const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
     return (
         <>
             {/* theme change */}
