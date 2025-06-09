@@ -5,7 +5,7 @@ interface ThemeState {
     theme: Theme;
 }
 const initialState: ThemeState = {
-    theme: (localStorage.getItem('theme-storage-caretrack') as Theme) || 'light',
+    theme: (localStorage.getItem('theme-storage-coinradar') as Theme) || 'light',
 };
 
 const themeSlice = createSlice({

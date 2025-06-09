@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { menu, type MenuItem } from "../../data/data";
+import { menu, type MenuItem } from "./data";
 import { useBurgerMenu } from "../../hooks/useBurgerMenu";
 import { scrollToSectionById } from "../../utils/functions";
 import { Auth } from "../Auth/Auth";
