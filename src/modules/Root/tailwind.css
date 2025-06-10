@@ -25,14 +25,14 @@
     :root {
         --color-text: #000;
         --color-fixed: linear-gradient(90deg,  #7c48c4,#4D4962);
-        --color-background: linear-gradient(135deg, #f5e8ff, #ecd9ff); 
+        --color-background: linear-gradient(135deg, #f5e8ffc2, #ecd9ffc8); 
         --color-card: #7d4adcbd;
 }
 
     :where(.dark, .dark *) {
         --color-text: #fff;
         --color-fixed: linear-gradient(135deg, #24003e, #2c0e42); 
-        --color-background: linear-gradient(90deg, #1a002c, #2e004f);
+        --color-background: linear-gradient(90deg, #1a002cb8, #2e004fb1);
         --color-card: #14043082; 
     }
 

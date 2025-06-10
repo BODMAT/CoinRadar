@@ -15,7 +15,7 @@ export function HomePage() {
             initial={"hidden"}
             whileInView={"visible"}
             viewport={{ once: true, amount: 0.2 }}
-            className="flex justify-between items-center gap-35 pt-10 max-lg:flex-col max-lg:items-center max-lg:text-center max-lg:justify-center max-lg:gap-5">
+            className="myContainer min-h-[90vh] flex justify-between items-center gap-35 pt-[90px] max-lg:flex-col max-lg:items-center max-lg:text-center max-lg:justify-center max-lg:gap-5">
             <div className="flex-3/5 max-lg:flex-1">
                 {DATA.map((textBlock: TextBlock, index: number) => {
                     return (

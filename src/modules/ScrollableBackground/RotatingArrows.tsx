@@ -5,14 +5,23 @@ import { RotatingArrow } from "./RotatingArrow";
 import { scrollToSectionById } from "../../utils/functions";
 
 const SNAP_DEBOUNCE_MS = 150;
-
 export function ScrollableBackground() {
     const scrollY = useAppSelector((state: RootState) => state.scroll.scrollY);
     const currentSectionId = useAppSelector((state: RootState) => state.scroll.currentSectionId);
-    const isSnapping = useAppSelector((state: RootState) => state.scroll.isSnapping);
     const dispatch = useAppDispatch();
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // 1. Відслідковуємо розміри вікна
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // 2. Отримую секції
     const [sectionIds, setSectionIds] = useState<string[]>([]);
     useEffect(() => {
         const sectionElements = Array.from(document.querySelectorAll('[id^="section"]'));
@@ -20,7 +29,7 @@ export function ScrollableBackground() {
         setSectionIds(ids);
     }, []);
 
-    // 1. Відслідковуємо скролл і оновлюємо scrollY
+    // 3. Відслідковую скролл і оновлюємо scrollY
     useEffect(() => {
         const onScroll = () => {
             dispatch(setScrollY(window.scrollY));
@@ -30,17 +39,20 @@ export function ScrollableBackground() {
         return () => window.removeEventListener('scroll', onScroll);
     }, [dispatch]);
 
-    // 2. Дебаунсим snap scrolling — запускаємо snap, якщо користувач перестав скролити > 150 мс
+    // 4. Дебаунсю snap scrolling — запускаємо snap, якщо користувач перестав скролити > 150 мс
+    const isSnappingRef = useRef(false); // оптимізація
     useEffect(() => {
+        if (!isMobile) return;
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
         timeoutRef.current = setTimeout(() => {
-            if (!isSnapping) {
+            if (!isSnappingRef.current) {
+                isSnappingRef.current = true;
                 dispatch(setIsSnapping(true));
 
-                // 3. Визначаємо найближчу секцію до current scrollY
                 let closestSection = null;
                 let minDistance = Infinity;
+
                 for (const id of sectionIds) {
                     const el = document.getElementById(id);
                     if (!el) continue;
@@ -54,11 +66,11 @@ export function ScrollableBackground() {
 
                 if (closestSection && closestSection !== currentSectionId) {
                     dispatch(setCurrentSectionId(closestSection));
-                    scrollToSectionById(closestSection);
+                    scrollToSectionById(closestSection, 80, true);
                 }
 
-                // 4. Після анімації скролу прибираємо isSnapping
                 setTimeout(() => {
+                    isSnappingRef.current = false;
                     dispatch(setIsSnapping(false));
                 }, 500);
             }
@@ -67,7 +79,7 @@ export function ScrollableBackground() {
         return () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
         };
-    }, [scrollY, isSnapping, currentSectionId, dispatch]);
+    }, [scrollY, sectionIds, currentSectionId, dispatch, isMobile]);
 
     return (
         <div className="fixed top-0 left-0 w-screen h-screen z-[-1] pt-[80px]">

@@ -46,7 +46,7 @@ export function FixedHeader() {
                 <div className="myContainer flex justify-between gap-4 items-center h-full">
                     <a href="./" className="logo transitioned hover:scale-105 flex items-center gap-2">
                         <img className="w-[50px] h-[50px]" src="./logo.png" alt="logo" />
-                        <h3 className="fontTitle text-2xl text-white">CoinRadar</h3>
+                        <h3 className="fontTitle text-2xl text-white font-black">CoinRadar</h3>
                     </a>
 
                     {!isMobile ? (

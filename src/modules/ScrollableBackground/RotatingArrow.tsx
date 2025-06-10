@@ -1,4 +1,6 @@
-export function RotatingArrow({ src, angle }: { src: string; angle: number }) {
+import React from "react";
+
+export const RotatingArrow = React.memo(({ src, angle }: { src: string; angle: number }) => {
     return (
         <img
             src={src}
@@ -12,4 +14,4 @@ export function RotatingArrow({ src, angle }: { src: string; angle: number }) {
             }}
         />
     );
-}
+});
