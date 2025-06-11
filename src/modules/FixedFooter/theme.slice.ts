@@ -1,11 +1,11 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark';
 interface ThemeState {
     theme: Theme;
 }
 const initialState: ThemeState = {
-    theme: (localStorage.getItem('theme-storage-coinradar') as Theme) || 'light',
+    theme: (localStorage.getItem('theme-storage-coinradar') as Theme) || 'dark',
 };
 
 const themeSlice = createSlice({

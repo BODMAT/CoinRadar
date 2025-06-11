@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
 
+/* Fix for canvas Chart.js */
+canvas {
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 @layer base {
     .transitioned {
@@ -26,8 +32,8 @@
         --color-text: #000;
         --color-fixed: linear-gradient(90deg,  #7c48c4,#4D4962);
         --color-background: linear-gradient(135deg, #f5e8ffc2, #ecd9ffc8); 
-        --color-card: #7d4adcbd;
-}
+        --color-card: #7d4adcbd;    
+    }
 
     :where(.dark, .dark *) {
         --color-text: #fff;

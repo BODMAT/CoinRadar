@@ -11,10 +11,10 @@ export function CryptoMenu() {
                     <input
                         type="text"
                         placeholder="Search..."
-                        className="bg-transparent outline-none text-white placeholder-white/50 max-[500px]:w-full w-40 sm:w-60"
+                        className="bg-transparent outline-none text-[var:--color-text] border-[var:--color-text] placeholder-white/50 max-[500px]:w-full w-40 sm:w-60"
                         onChange={(e) => console.log("search:", e.target.value)}
                     />
-                    <button className="w-5 h-5 opacity-80 cursor-pointer" onClick={() => console.log("search")}>
+                    <button className="w-8 h-8 opacity-80 cursor-pointer transitioned bg-[var(--color-card)] rounded-[50%] p-2 hover:scale-90" onClick={() => console.log("search")}>
                         <img src={SearchSVG} alt="Search" />
                     </button>
                 </div>
@@ -22,7 +22,7 @@ export function CryptoMenu() {
                 {/* Кнопка фільтрів */}
                 <button
                     onClick={() => console.log("add selected filters")}
-                    className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-[var(--color-card)] cursor-pointer rounded transitioned hover:scale-105 text-[white] border-[white] border-2"
+                    className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-[var(--color-card)] cursor-pointer rounded transitioned hover:scale-105 text-[var:--color-text] border-[white] border-2"
                 >
                     Filters
                 </button>
@@ -31,13 +31,13 @@ export function CryptoMenu() {
                 {/* Кнопки навігації */}
                 <button
                     onClick={() => console.log("go back")}
-                    className="cursor-pointer px-4 py-2 bg-[var(--color-card)] text-white rounded border border-white/20 hover:scale-105 transitioned"
+                    className="cursor-pointer px-4 py-2 bg-[var(--color-card)] text-[var:(--color-text)] border-[white] rounded border hover:scale-105 transitioned"
                 >
                     ←
                 </button>
                 <button
                     onClick={() => console.log("go forward")}
-                    className="cursor-pointer px-4 py-2 bg-[var(--color-card)] text-white rounded border border-white/20 hover:scale-105 transitioned"
+                    className="cursor-pointer px-4 py-2 bg-[var(--color-card)] text-[var:(--color-text)] border-[white] rounded border hover:scale-105 transitioned"
                 >
                     →
                 </button>

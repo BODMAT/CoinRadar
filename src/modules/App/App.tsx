@@ -5,6 +5,7 @@ import { FixedFooter } from "../FixedFooter/FixedFooter";
 import { FixedHeader } from "../FixedHeader/FixedHeader";
 import { HomePage } from "../HomePage/HomePage";
 import { AllCrypto } from "../AllCrypto/AllCrypto";
+import { Wallet } from "../Wallet/Wallet";
 
 export function App() {
   useApplyTheme();
@@ -19,12 +20,13 @@ export function App() {
           <section id="section2">
             <AllCrypto />
           </section>
-          <section id="section3" className="bg-blue-100/10">
-            {Array(500).fill("BBBB ").join("")}
+          <section id="section3">
+            <Wallet />
           </section>
         </main>
         <FixedFooter />
       </div>
+
       {/* All PopUps in one portal */}
       <PopUp />
 
