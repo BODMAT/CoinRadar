@@ -58,7 +58,7 @@ export function FixedHeader() {
                                     (cls, i) => (
                                         <span
                                             key={i}
-                                            className={`h-1 w-9 bg-white rounded-full transition-all duration-500 ${isBurgerOpen ? cls : ""
+                                            className={`h-1 w-9 bg-[var(--color-text)] rounded-full transition-all duration-500 ${isBurgerOpen ? cls : ""
                                                 }`}
                                         ></span>
                                     )

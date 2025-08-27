@@ -1,13 +1,14 @@
 import { useAppDispatch, useAppSelector, type RootState } from "../../store";
+import { logout } from "./auth.slice";
 import { loginUser } from "./auth.thunks";
-import { resetAuthState } from "./auth.slice";
 
 export function Auth() {
     const dispatch = useAppDispatch();
-    const { loading, isAuth, currentUser } = useAppSelector((state: RootState) => state.auth);
+    const { loading, currentUser } = useAppSelector((state: RootState) => state.auth);
+
 
     const handleLogin = () => {
-        dispatch(resetAuthState());
+        dispatch(logout());
         dispatch(loginUser());
     };
 
@@ -18,7 +19,7 @@ export function Auth() {
         >
             {loading ? (
                 "Loading..."
-            ) : isAuth ? (
+            ) : currentUser ? (
                 currentUser?.displayName ?? "Authenticated"
             ) : (
                 "Auth"

@@ -4,7 +4,6 @@ import { loginUser } from "./auth.thunks";
 
 interface AuthState {
     currentUser: User | null;
-    isAuth: boolean;
     loading: boolean;
     error: string | null;
 }
@@ -12,7 +11,6 @@ interface AuthState {
 const storedUser = localStorage.getItem("user-storage-coinradar");
 const initialState: AuthState = {
     currentUser: storedUser ? JSON.parse(storedUser) : null,
-    isAuth: !!storedUser,
     loading: false,
     error: null,
 };
@@ -22,13 +20,8 @@ const authSlice = createSlice({
     initialState,
     reducers: {
         logout(state) {
-            state.currentUser = null;
-            state.isAuth = false;
-            localStorage.removeItem("user-storage-coinradar");
-        },
-        resetAuthState(state) {
             state.loading = false;
-            state.error = null;
+            state.currentUser = null;
             localStorage.removeItem("user-storage-coinradar");
         },
     },
@@ -41,19 +34,17 @@ const authSlice = createSlice({
             .addCase(loginUser.fulfilled, (state, action: PayloadAction<User>) => {
                 state.loading = false;
                 state.currentUser = action.payload;
-                state.isAuth = true;
                 localStorage.setItem("user-storage-coinradar", JSON.stringify(action.payload));
             })
             .addCase(loginUser.rejected, (state, action) => {
                 state.loading = false;
-                state.error = action.payload ?? "Failed to login";
+                state.error = action.payload as string ?? "Failed to login";
                 state.currentUser = null;
-                state.isAuth = false;
             });
     },
 
 });
 
-export const { logout, resetAuthState } = authSlice.actions;
+export const { logout } = authSlice.actions;
 export default authSlice.reducer;
 

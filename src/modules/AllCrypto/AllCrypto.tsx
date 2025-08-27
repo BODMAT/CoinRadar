@@ -1,36 +1,22 @@
-import { useEffect, useState } from "react";
 import { Graph } from "./Graph";
 import { CryptoMenu } from "./CryptoMenu";
-
-const ALL_CRYPTO_API_URL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=true'; //only test
-
-interface Coin {
-    id: string;
-    name: string;
-    image: string;
-    current_price: number;
-    price_change_percentage_24h: number;
-    sparkline_in_7d: {
-        price: number[];
-    };
-}
+import { useAppDispatch, useAppSelector } from "../../store";
+import { getAllCoins } from "./all-crypto.thunks";
+import { useEffect } from "react";
+import type { Coin } from "../../api/crypto";
 
 export function AllCrypto() {
-    const [coins, setCoins] = useState<Coin[]>([]);
+    const dispatch = useAppDispatch();
+    const { coinsPerPage, loading, error, page, perPage } = useAppSelector(state => state.allCrypto);
 
     useEffect(() => {
-        const fetchCoins = async () => {
-            const res = await fetch(ALL_CRYPTO_API_URL);
-            const data = await res.json();
-            console.log(data);
-            setCoins(data);
-        };
-
-        fetchCoins();
-        const interval = setInterval(fetchCoins, 60000);
-        return () => clearInterval(interval);
+        dispatch(getAllCoins());
     }, []);
 
+    const skeletonArray: (Coin | undefined)[] = Array.from({ length: perPage });
+
+    if (loading) return <div>Loading...</div>;
+    if (error) return <div>{error}</div>;
     return (
         <div className="py-5 min-h-screen">
             <CryptoMenu />
@@ -45,31 +31,62 @@ export function AllCrypto() {
                 </div>
 
                 <div className="flex flex-col px-4">
-                    {coins.length > 0 ? (
-                        coins.map((coin: Coin, index: number) => (
+                    {(coinsPerPage && coinsPerPage.length > 0 ? coinsPerPage : skeletonArray).map((coin: Coin | undefined, index: number) => {
+                        const isSkeleton = !coin;
+
+                        return (
                             <div
-                                key={coin.id}
+                                key={coin?.id ?? index}
                                 className="grid grid-cols-7 max-md:grid-cols-6 max-[600px]:!grid-cols-5 max-[450px]:!grid-cols-4 max-[370px]:!grid-cols-3 gap-5 items-center py-3 border-b border-white/10 text-sm"
                             >
-                                <h3 className="max-[450px]:hidden">{index + 1}</h3>
-                                <button onClick={() => console.log("add modal")} className="text-left hover:underline cursor-pointer">
-                                    {coin.name}
-                                </button>
-                                <img src={coin.image} alt="img" className="w-8 max-[600px]:hidden" />
-                                <h3>${coin.current_price.toLocaleString()}</h3>
-                                <h3 className={`max-[370px]:hidden ${coin.price_change_percentage_24h > 0 ? "text-green-500" : "text-red-500"}`}>
-                                    {coin.price_change_percentage_24h.toFixed(2)}%
+                                <h3 className="max-[450px]:hidden">
+                                    {isSkeleton
+                                        ? <div className="h-4 bg-white/20 rounded w-6 animate-pulse"></div>
+                                        : page === 1
+                                            ? index + 1
+                                            : (page - 1) * perPage + index + 1
+                                    }
                                 </h3>
+
+                                <button className="text-left hover:underline cursor-pointer">
+                                    {isSkeleton
+                                        ? <div className="h-4 bg-white/20 rounded w-24 animate-pulse"></div>
+                                        : coin.name
+                                    }
+                                </button>
+
+                                <div className="max-[600px]:hidden">
+                                    {isSkeleton
+                                        ? <div className="h-8 w-8 bg-white/20 rounded-full animate-pulse"></div>
+                                        : <img src={coin.image} alt="img" className="w-8" />
+                                    }
+                                </div>
+
+                                <h3>
+                                    {isSkeleton
+                                        ? <div className="h-4 bg-white/20 rounded w-16 animate-pulse"></div>
+                                        : `$${coin.current_price.toLocaleString()}`
+                                    }
+                                </h3>
+
+                                <h3 className={`max-[370px]:hidden ${!isSkeleton ? (coin.price_change_percentage_24h > 0 ? "text-green-500" : "text-red-500") : ""}`}>
+                                    {isSkeleton
+                                        ? <div className="h-4 bg-white/20 rounded w-10 animate-pulse"></div>
+                                        : `${coin.price_change_percentage_24h.toFixed(2)}%`
+                                    }
+                                </h3>
+
                                 <div className="col-span-2 max-md:col-span-1">
-                                    <Graph sparkline_in_7d={coin.sparkline_in_7d} />
+                                    {isSkeleton
+                                        ? <div className="h-10 bg-white/20 rounded animate-pulse"></div>
+                                        : <Graph sparkline_in_7d={coin.sparkline_in_7d} />
+                                    }
                                 </div>
                             </div>
-                        ))
-                    ) : (
-                        <p className="text-center py-5">Loading...</p>
-                    )}
+                        );
+                    })}
                 </div>
             </div>
         </div>
-    )
+    );
 }

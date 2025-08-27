@@ -33,7 +33,7 @@ export function HomePage() {
                         </motion.div>
                     );
                 })}
-                <motion.button onClick={handleOnenPopup} variants={blockFromLeftAnimation} className="transitioned relative p-4 rounded-2xl bg-[var-(--color-card)] text-white 
+                <motion.button onClick={handleOnenPopup} custom={3} variants={blockFromLeftAnimation} className="transitioned relative p-4 rounded-2xl bg-[var-(--color-card)] text-white 
                        font-black text-2xl w-fit cursor-pointer border-3
                        shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-[0_15px_35px_rgba(0,0,0,0.4)]
                        hover:scale-[1.02] transitioned
