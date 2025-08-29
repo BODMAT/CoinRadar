@@ -1,6 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { z } from "zod";
-import { setIsAPILoading, sincronizeAllCoins } from "./all-crypto.slice";
 export interface Coin {
     id: string;
     symbol: string;

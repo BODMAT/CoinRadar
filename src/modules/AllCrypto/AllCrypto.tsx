@@ -6,7 +6,7 @@ import { openPopup } from "../../portals/popup.slice";
 import { CoinPopup } from "./Coin.popup";
 
 export function AllCrypto() {
-    const { page, perPage, coinsPerPage, isAPILoading, allCoins } = useAppSelector(state => state.allCrypto);
+    const { page, perPage, coinsPerPage, isAPILoading, allCoins, filteredCoins } = useAppSelector(state => state.allCrypto);
     const skeletonArray: (Coin | undefined)[] = Array.from({ length: perPage });
     const dispatch = useAppDispatch();
     const handleOpenPopup = (coin: Coin) => {
@@ -16,7 +16,7 @@ export function AllCrypto() {
     return (
         <div className="py-5">
             <CryptoMenu />
-            {!!allCoins.length && !isAPILoading && (
+            {!!allCoins.length && !isAPILoading && !!filteredCoins.length && (
                 <div className="mt-3 bg-[image:var(--color-background)] rounded-2xl py-2">
                     <div className="grid grid-cols-7 max-md:grid-cols-6 max-[600px]:!grid-cols-5 max-[450px]:!grid-cols-4 max-[370px]:!grid-cols-3 gap-5 px-4 my-3 items-center">
                         <h3 className="text-xl font-black text-left max-[450px]:hidden">#</h3>
@@ -84,6 +84,9 @@ export function AllCrypto() {
                         })}
                     </div>
                 </div>
+            )}
+            {!!allCoins.length && !isAPILoading && !filteredCoins.length && (
+                <div className="font-bold fontTitle text-2xl text-center mt-3 bg-[image:var(--color-background)] rounded-2xl py-2">No coins found with this name</div>
             )}
             {!allCoins.length && !isAPILoading && (
                 <div className="font-bold fontTitle text-2xl text-center mt-3 bg-[image:var(--color-background)] rounded-2xl py-2">Plese wait a minute to load data. CoinGecko API is limited</div>

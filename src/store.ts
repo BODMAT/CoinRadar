@@ -6,6 +6,7 @@ import popupSlice from './portals/popup.slice';
 import allCryptoSlice from './modules/AllCrypto/all-crypto.slice';
 import { authApi } from './modules/Auth/auth.api';
 import { allCryptoApi } from './modules/AllCrypto/all-crypto.api';
+import { walletApi } from './modules/Wallet/wallet.api';
 //! low coupling high cohesion (slicess + component)
 export const store = configureStore({
     reducer: {
@@ -19,10 +20,11 @@ export const store = configureStore({
 
         // practice RTK Query
         [authApi.reducerPath]: authApi.reducer,
-        [allCryptoApi.reducerPath]: allCryptoApi.reducer
+        [allCryptoApi.reducerPath]: allCryptoApi.reducer,
+        [walletApi.reducerPath]: walletApi.reducer
     },
     middleware: (getDefault) =>
-        getDefault().concat(authApi.middleware, allCryptoApi.middleware),
+        getDefault().concat(authApi.middleware, allCryptoApi.middleware, walletApi.middleware),
 
 });
 
