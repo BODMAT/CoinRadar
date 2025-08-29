@@ -6,9 +6,15 @@ import { FixedHeader } from "../FixedHeader/FixedHeader";
 import { HomePage } from "../HomePage/HomePage";
 import { AllCrypto } from "../AllCrypto/AllCrypto";
 import { Wallet } from "../Wallet/Wallet";
+import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
 
 export function App() {
   useApplyTheme();
+  useGetAllCoinsQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+    refetchOnReconnect: true,
+    pollingInterval: 60000,
+  });
   return (
     <div className="relative">
       <div className="fontText relative transitioned flex flex-col justify-between max-w-full overflow-hidden">

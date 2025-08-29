@@ -1,15 +1,11 @@
-import { useAppDispatch, useAppSelector, type RootState } from "../../store";
-import { logout } from "./auth.slice";
-import { loginUser } from "./auth.thunks";
+import { useLoginUserMutation, useLogoutUserMutation } from "./auth.api";
 
 export function Auth() {
-    const dispatch = useAppDispatch();
-    const { loading, currentUser } = useAppSelector((state: RootState) => state.auth);
-
+    const [loginUser, { data: currentUser, isLoading }] = useLoginUserMutation();
+    const [logoutUser] = useLogoutUserMutation();
 
     const handleLogin = () => {
-        dispatch(logout());
-        dispatch(loginUser());
+        logoutUser().then(() => loginUser());
     };
 
     return (
@@ -17,7 +13,7 @@ export function Auth() {
             onClick={handleLogin}
             className="flex justify-center items-center text-center px-9 py-2 bg-[var(--color-card)] cursor-pointer rounded transitioned hover:scale-105 text-[white] border-[white] border-2"
         >
-            {loading ? (
+            {isLoading ? (
                 "Loading..."
             ) : currentUser ? (
                 currentUser?.displayName ?? "Authenticated"

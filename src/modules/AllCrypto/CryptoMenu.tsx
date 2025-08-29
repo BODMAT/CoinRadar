@@ -1,19 +1,18 @@
 import { useEffect, useState } from "react";
 import SearchSVG from "../../assets/search.svg";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { setPage, filterCoinsWithoutRefetch, resetFilter } from "./all-crypto.slice";
+import { setPage, filterCoins } from "./all-crypto.slice";
 export function CryptoMenu() {
     const dispatch = useAppDispatch();
-    const { page, coinsPerPage } = useAppSelector(state => state.allCrypto);
+    const { page, filteredCoins, allCoins, perPage } = useAppSelector(state => state.allCrypto);
     const [inputValue, setInputValue] = useState('');
 
     useEffect(() => {
-        if (inputValue.length >= 1) {
-            dispatch(filterCoinsWithoutRefetch(inputValue));
-        } else {
-            dispatch(resetFilter());
-        }
-    }, [inputValue, dispatch]);
+        if (allCoins.length === 0) return;
+
+        dispatch(filterCoins(inputValue));
+    }, [inputValue, allCoins, dispatch]);
+
 
     return (
         <div className="bg-[image:var(--color-background)] rounded-2xl flex gap-5 justify-between items-center p-2 flex-wrap max-[804px]:justify-center">
@@ -36,17 +35,20 @@ export function CryptoMenu() {
             <div className="flex gap-1 items-center">
                 {/* navigation */}
                 <button
-                    onClick={() => dispatch(setPage(page - 1))} disabled={page === 1}
+                    onClick={() => dispatch(setPage(page - 1))}
+                    disabled={page === 1}
                     className="cursor-pointer px-4 py-2 bg-[var(--color-card)] text-[var:(--color-text)] border-[white] rounded border hover:scale-105 transitioned disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     ←
                 </button>
                 <button
-                    onClick={() => dispatch(setPage(page + 1))} disabled={(coinsPerPage?.length ?? 0) < 10}
+                    onClick={() => dispatch(setPage(page + 1))}
+                    disabled={page >= Math.ceil(filteredCoins.length / perPage)}
                     className="cursor-pointer px-4 py-2 bg-[var(--color-card)] text-[var:(--color-text)] border-[white] rounded border hover:scale-105 transitioned disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     →
                 </button>
+
             </div>
         </div>
     );

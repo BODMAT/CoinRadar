@@ -1,11 +1,11 @@
 import { configureStore, type ThunkAction, type UnknownAction } from '@reduxjs/toolkit';
 import scrollReducer from './modules/ScrollableBackground/scroll.slice';
 import themeReducer from './modules/FixedFooter/theme.slice';
-import authReducer from "./modules/Auth/auth.slice";
 import { useDispatch, useSelector, useStore } from 'react-redux';
 import popupSlice from './portals/popup.slice';
 import allCryptoSlice from './modules/AllCrypto/all-crypto.slice';
-
+import { authApi } from './modules/Auth/auth.api';
+import { allCryptoApi } from './modules/AllCrypto/all-crypto.api';
 //! low coupling high cohesion (slicess + component)
 export const store = configureStore({
     reducer: {
@@ -15,12 +15,15 @@ export const store = configureStore({
         popup: popupSlice,
 
         // practice trunks and async thunks
-        auth: authReducer,
         allCrypto: allCryptoSlice,
 
         // practice RTK Query
-
+        [authApi.reducerPath]: authApi.reducer,
+        [allCryptoApi.reducerPath]: allCryptoApi.reducer
     },
+    middleware: (getDefault) =>
+        getDefault().concat(authApi.middleware, allCryptoApi.middleware),
+
 });
 
 export type RootState = ReturnType<typeof store.getState>;
