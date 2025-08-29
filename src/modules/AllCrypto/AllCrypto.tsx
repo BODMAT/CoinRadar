@@ -1,11 +1,18 @@
 import { Graph } from "./Graph";
 import { CryptoMenu } from "./CryptoMenu";
-import { useAppSelector } from "../../store";
+import { useAppDispatch, useAppSelector } from "../../store";
 import type { Coin } from "./all-crypto.api";
+import { openPopup } from "../../portals/popup.slice";
+import { CoinPopup } from "./Coin.popup";
 
 export function AllCrypto() {
     const { page, perPage, coinsPerPage, isAPILoading, allCoins } = useAppSelector(state => state.allCrypto);
     const skeletonArray: (Coin | undefined)[] = Array.from({ length: perPage });
+    const dispatch = useAppDispatch();
+    const handleOpenPopup = (coin: Coin) => {
+        dispatch(openPopup({ title: `${coin.name} about`, children: <CoinPopup coin={coin} /> }));
+    }
+
     return (
         <div className="py-5">
             <CryptoMenu />
@@ -38,7 +45,7 @@ export function AllCrypto() {
                                         }
                                     </h3>
 
-                                    <button className="text-left hover:underline cursor-pointer">
+                                    <button onClick={coin ? () => handleOpenPopup(coin) : undefined} className="text-left hover:underline cursor-pointer">
                                         {isSkeleton
                                             ? <div className="h-4 bg-white/20 rounded w-24 animate-pulse"></div>
                                             : coin.name
