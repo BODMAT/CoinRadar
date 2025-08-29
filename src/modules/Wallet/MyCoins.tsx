@@ -115,19 +115,19 @@ export function MyCoins() {
                 />
             </div>
             <div className="">
-                <div className="grid items-center grid-cols-5 font-semibold border-b pb-2 text-sm text-gray-700 dark:text-gray-200">
+                <div className="grid items-center grid-cols-5 max-[420px]:grid-cols-4 font-semibold border-b pb-2 text-sm text-gray-700 dark:text-gray-200 max-[420px]:text-[13px]">
                     <div>Name</div>
                     <div className="text-center">Quantity</div>
                     <div className="text-center">Current Price</div>
                     <div className="text-center">Buying Price</div>
-                    <div className="text-center">Date</div>
+                    <div className="text-center max-[420px]:hidden">Date</div>
                 </div>
 
                 {sortedCoins.map((coin) => (
                     <button
                         onClick={() => console.log("coin modal to change")}
                         key={coin.id}
-                        className="cursor-pointer grid grid-cols-5 items-center border-b py-2 text-sm hover:bg-gray-100/10 w-full"
+                        className="cursor-pointer grid grid-cols-5 max-[420px]:grid-cols-4 items-center border-b py-2 text-sm hover:bg-gray-100/10 w-full max-[420px]:text-[13px]"
                     >
                         <div className="flex items-center gap-2">
                             <img src={coin.image} alt={coin.name} className="w-5 h-5" />
@@ -136,7 +136,7 @@ export function MyCoins() {
                         <div>{coin.quantity}</div>
                         <div>${coin.current_price}</div>
                         <div>${coin.buying_price}</div>
-                        <div>{coin.date}</div>
+                        <div className="max-[420px]:hidden">{coin.date}</div>
                     </button>
                 ))}
             </div>

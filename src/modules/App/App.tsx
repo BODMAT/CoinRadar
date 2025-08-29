@@ -6,15 +6,17 @@ import { FixedHeader } from "../FixedHeader/FixedHeader";
 import { HomePage } from "../HomePage/HomePage";
 import { AllCrypto } from "../AllCrypto/AllCrypto";
 import { Wallet } from "../Wallet/Wallet";
-import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
+import { fetchAllCoinsThunk } from "../AllCrypto/all-crypto.thunk";
+import { useEffect } from "react";
+import { useAppDispatch } from "../../store";
 
 export function App() {
   useApplyTheme();
-  useGetAllCoinsQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-    refetchOnReconnect: true,
-    pollingInterval: 60000,
-  });
+
+  const dispatch = useAppDispatch();
+  useEffect(() => {
+    dispatch(fetchAllCoinsThunk());
+  }, [dispatch]);
   return (
     <div className="relative">
       <div className="fontText relative transitioned flex flex-col justify-between max-w-full overflow-hidden">

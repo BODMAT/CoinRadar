@@ -4,7 +4,7 @@ import { Graph } from "./Graph";
 export function CoinPopup({ coin }: { coin: Coin }) {
     return (
         <div className="flex gap-5 flex-col">
-            <div className="flex justify-between items-center p-2 rounded bg-[var(--color-card)] transitioned text-[var(--color-text)]">
+            <div className="flex max-md:flex-col justify-between items-center p-2 rounded bg-[var(--color-card)] transitioned text-[var(--color-text)]">
                 <div className="flex gap-3 items-center">
                     <img src={coin.image} alt={coin.name} className="w-12 h-12" />
                     <span className="font-bold text-xl">{coin.name}</span>
