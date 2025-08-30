@@ -1,40 +1,37 @@
-import type { Coin } from "../AllCrypto/all-crypto.api";
-import { useAddWalletCoinTransactionMutation, useGetWalletCoinQuery, type Transaction } from "./wallet.api";
-import { calculateAverageBuyingPrice, generateUID } from "../../utils/functions";
 import { useEffect, useState } from "react";
-import { useGetUserQuery } from "../Auth/auth.api";
-import { closePopup, openPopup } from "../../portals/popup.slice";
 import { useAppDispatch } from "../../store";
-export function AddTransactionPopup({ coin }: { coin: Coin }) {
+import { useGetUserQuery } from "../Auth/auth.api";
+import { useGetWalletCoinQuery, useUpdateWalletCoinTransactionMutation, type Transaction, type TransactionWithCoinId } from "./wallet.api";
+import { closePopup, openPopup } from "../../portals/popup.slice";
+import { calculateAverageBuyingPrice } from "../../utils/functions";
+
+export function ChangeTransactionPopup({ transaction }: { transaction: TransactionWithCoinId }) {
     const dispach = useAppDispatch();
     const { data: user } = useGetUserQuery();
-
-    const { data: transaction } = useGetWalletCoinQuery(
-        { walletId: user?.uid!, coinId: coin.id },
+    const { data: transactionFromQuery } = useGetWalletCoinQuery(
+        { walletId: user?.uid!, coinId: transaction.coinId },
         { skip: !user?.uid }
     );
-
-    const [addTransaction] = useAddWalletCoinTransactionMutation();
-
+    const [changeTransaction] = useUpdateWalletCoinTransactionMutation();
     const [stringifiedValues, setStringifiedValues] = useState({
-        quantity: "0",
-        price: coin.current_price.toString(),
-        total_price: "0",
+        quantity: transaction.quantity.toString(),
+        price: transaction.price.toString(),
+        total_price: (transaction.price * transaction.quantity).toString(),
     });
     const [form, setForm] = useState<Transaction>({
-        id: generateUID(coin.name),
+        id: transaction.id,
         coinInfo: {
-            symbol: coin.symbol,
-            name: coin.name,
-            image: coin.image,
-            current_price: coin.current_price,
-            price_change_percentage_24h: coin.price_change_percentage_24h,
+            symbol: transaction.coinInfo.symbol,
+            name: transaction.coinInfo.name,
+            image: transaction.coinInfo.image,
+            current_price: transaction.coinInfo.current_price,
+            price_change_percentage_24h: transaction.coinInfo.price_change_percentage_24h,
 
         },
         quantity: Number(stringifiedValues.quantity),
         price: Number(stringifiedValues.price),
         date: new Date().toISOString().split('T')[0],
-        buyOrSell: "buy"
+        buyOrSell: transaction.buyOrSell
     });
 
     useEffect(() => {
@@ -49,14 +46,14 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
     const handleSubmit = async () => {
         if (!user?.uid) return;
         try {
-            await addTransaction({
+            await changeTransaction({
                 walletId: user?.uid ?? "",
                 transaction: form,
-                coinId: coin.id
+                coinId: transaction.coinId
             });
             dispach(closePopup());
             await new Promise((resolve) => setTimeout(resolve, 300));
-            dispach(openPopup({ title: "Success", children: "Transaction added!" }));
+            dispach(openPopup({ title: "Success", children: "Transaction changed!" }));
         } catch (error: any) {
             dispach(openPopup({ title: "Failure", children: error.toString() }));
         }
@@ -64,19 +61,18 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
     return (
         <div className="flex flex-col gap-5">
             <div className="flex justify-between gap-5 items-center mx-auto max-md:flex-col">
-                <img className="w-12 h-12" src={coin.image} alt={coin.name} />
-                <h2 className="font-bold text-xl">{coin.name}</h2>
+                <img className="w-12 h-12" src={transaction.coinInfo.image} alt={transaction.coinInfo.name} />
+                <h2 className="font-bold text-xl">{transaction.coinInfo.name}</h2>
                 <div className="">
                     <h3>Already in your wallet</h3>
-                    <h3>Quantity: {transaction ? transaction?.transactions.reduce((acc, transaction) => {
+                    <h3>Quantity: {transactionFromQuery ? transactionFromQuery?.transactions.reduce((acc, transaction) => {
                         if (transaction.buyOrSell === "buy") {
                             return acc + transaction.quantity;
                         } else {
                             return acc - transaction.quantity;
                         }
                     }, 0) : 0}</h3>
-                    <h3>Current price: {coin.current_price}</h3>
-                    <h3>Your average buying price: {transaction ? calculateAverageBuyingPrice(transaction.transactions) : 0}</h3>
+                    <h3>Your average buying price: {transactionFromQuery ? calculateAverageBuyingPrice(transactionFromQuery.transactions) : 0}</h3>
                 </div>
             </div>
             <form className="flex flex-col gap-5 " onSubmit={(e) => { e.preventDefault(); handleSubmit() }}>
@@ -118,7 +114,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                     <option value="buy" className="bg-green-500">Buy</option>
                     <option value="sell" className="bg-red-500">Sell</option>
                 </select>
-                <button type="submit" disabled={!form.quantity} className="px-2 border-2 border-black rounded fontTitle p-2 bg-[var(--color-card)] cursor-pointer transitioned hover:scale-101 text-[var:--color-text]">{form.quantity ? "Add transaction" : "To add transaction you need to enter quantity"}</button>
+                <button type="submit" disabled={!form.quantity} className="px-2 border-2 border-black rounded fontTitle p-2 bg-[var(--color-card)] cursor-pointer transitioned hover:scale-101 text-[var:--color-text]">{form.quantity ? "Change transaction" : "To change transaction you need to enter quantity"}</button>
             </form>
         </div>
     )

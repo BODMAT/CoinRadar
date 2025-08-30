@@ -1,11 +1,13 @@
-import { useLoginUserMutation, useLogoutUserMutation } from "./auth.api";
+import { useGetUserQuery, useLoginUserMutation, useLogoutUserMutation } from "./auth.api";
 
 export function Auth() {
-    const [loginUser, { data: currentUser, isLoading }] = useLoginUserMutation();
+    const { data: currentUser, isLoading } = useGetUserQuery();
+    const [loginUser] = useLoginUserMutation();
     const [logoutUser] = useLogoutUserMutation();
 
-    const handleLogin = () => {
-        logoutUser().then(() => loginUser());
+    const handleLogin = async () => {
+        await logoutUser();
+        await loginUser();
     };
 
     return (

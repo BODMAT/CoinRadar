@@ -39,7 +39,7 @@ export function ChooseCoinPopup() {
             </div>
             <div className="flex flex-col gap-3">
                 {allCoins && localFilteredCoins.map((coin: Coin) => (
-                    <button key={coin.id} onClick={() => handleOpenAddTransaction(coin)} className="flex gap-2 justify-between items-center transitioned hover:scale-101 hover:shadow-md hover:bg-[var(--color-card)] p-2 cursor-pointer hover:text-[var(--color-text)]">
+                    <button key={coin.id} onClick={() => handleOpenAddTransaction(coin)} className="grid grid-cols-3 gap-2 justify-between items-center transitioned hover:scale-101 hover:shadow-md hover:bg-[var(--color-card)] p-2 cursor-pointer hover:text-[var(--color-text)]">
                         <img className="w-8 h-8" src={coin.image} alt={coin.name} />
                         <div className="">{coin.name}</div>
                         <div className="">{coin.current_price}</div>

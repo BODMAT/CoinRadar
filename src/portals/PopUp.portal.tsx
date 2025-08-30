@@ -43,7 +43,7 @@ export function PopUp() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -50 }}
                         transition={{ duration: 0.3, ease: "easeOut" }}
-                        className="bg-white rounded-lg w-[90%] max-w-[700px] shadow-lg relative !z-[999999] max-md:mt-[5vh] max-h-[80vh] flex flex-col"
+                        className="bg-white rounded-lg w-[90%] max-w-[700px] shadow-lg relative !z-[999999] max-md:mt-[5vh] max-h-[80vh] flex flex-col overflow-hidden"
                     >
                         <div className="bg-[#121212] flex justify-between items-center p-4 flex-shrink-0">
                             <h2 className="fontTitle text-2xl font-bold text-white">{title}</h2>

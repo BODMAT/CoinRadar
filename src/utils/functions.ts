@@ -1,4 +1,5 @@
-import type { Wallet } from "../modules/Wallet/wallet.api";
+import type { Coin } from "../modules/AllCrypto/all-crypto.api";
+import type { Transaction, Wallet } from "../modules/Wallet/wallet.api";
 
 export const scrollToSectionById = (
     id: string,
@@ -14,9 +15,58 @@ export const scrollToSectionById = (
     window.scrollTo({ top, behavior: "smooth" });
 };
 
-export const calcSumOfAllTransactions = (wallet: Wallet) => {
-    return wallet.coins.reduce((acc, coin) => acc + coin.transactions.reduce((acc, transaction) => acc + transaction.quantity * transaction.buying_price, 0), 0);
+export const calcWalletBalanceWithCurrentPrice = (wallet: Wallet, coinsMarketData: Coin[]): number => {
+    let totalBalance = 0;
+
+    for (const coin of wallet.coins) {
+        let totalQuantity = 0;
+
+        for (const tx of coin.transactions) {
+            if (tx.buyOrSell === "buy") {
+                totalQuantity += tx.quantity;
+            } else if (tx.buyOrSell === "sell") {
+                totalQuantity -= tx.quantity;
+            }
+        }
+
+        const marketCoin = coinsMarketData.find(c => c.id === coin.id);
+        if (marketCoin) {
+            totalBalance += totalQuantity * marketCoin.current_price;
+        }
+    }
+
+    return totalBalance;
 };
+
+export const calcWalletProfitLoss = (wallet: Wallet, coinsMarketData: Coin[]): number => {
+    let totalSpent = 0;
+    let totalCurrentValue = 0;
+
+    for (const coin of wallet.coins) {
+        let quantity = 0;
+        let spentOnCoin = 0;
+
+        for (const tx of coin.transactions) {
+            if (tx.buyOrSell === "buy") {
+                quantity += tx.quantity;
+                spentOnCoin += tx.quantity * tx.price;
+            } else if (tx.buyOrSell === "sell") {
+                quantity -= tx.quantity;
+                spentOnCoin -= (spentOnCoin / quantity) * tx.quantity;
+            }
+        }
+
+        const marketCoin = coinsMarketData.find(c => c.id === coin.id);
+        if (marketCoin) {
+            totalCurrentValue += quantity * marketCoin.current_price;
+            totalSpent += spentOnCoin;
+        }
+    }
+
+    return totalCurrentValue - totalSpent;
+};
+
+
 
 export const generateUID = (title: string) => {
     const random = Math.random().toString(36).substring(2, 9);
@@ -25,3 +75,33 @@ export const generateUID = (title: string) => {
 
     return `${correctedTitle}_${timestamp}_${random}`;
 };
+
+export function calculateAveragePrice(transactions: Transaction[]): number {
+    let totalQuantity = 0;
+    let totalCost = 0;
+
+    for (const tx of transactions) {
+        if (tx.buyOrSell === "buy") {
+            totalCost += tx.price * tx.quantity;
+            totalQuantity += tx.quantity;
+        } else if (tx.buyOrSell === "sell") {
+            totalQuantity -= tx.quantity;
+        }
+    }
+
+    return totalQuantity > 0 ? totalCost / totalQuantity : 0;
+}
+
+export function calculateAverageBuyingPrice(transactions: Transaction[]): number {
+    let totalQuantity = 0;
+    let totalCost = 0;
+
+    for (const tx of transactions) {
+        if (tx.buyOrSell === "buy") {
+            totalCost += tx.price * tx.quantity;
+            totalQuantity += tx.quantity;
+        }
+    }
+
+    return totalQuantity > 0 ? totalCost / totalQuantity : 0;
+}

@@ -9,10 +9,14 @@ export interface Transaction {
     coinInfo: Omit<Coin, "sparkline_in_7d" | "other" | "ath" | "id">;
 
     quantity: number;
-    buying_price: number;
+    price: number;
     date: string;
 
     buyOrSell: "buy" | "sell";
+}
+
+export interface TransactionWithCoinId extends Transaction {
+    coinId: string;
 }
 
 export interface CoinTransactions {
@@ -36,7 +40,7 @@ export const TransactionScheme = z.object({
     }),
 
     quantity: z.number().nonnegative(),
-    buying_price: z.number().nonnegative(),
+    price: z.number().nonnegative(),
     date: z.string().refine(val => !isNaN(Date.parse(val)), {
         message: "Invalid date format",
     }),
@@ -59,41 +63,38 @@ export const walletApi = createApi({
     tagTypes: ["Wallet", "WalletCoin", "WalletTransaction"],
     endpoints: (builder) => ({
         getWallet: builder.query<Wallet, string>({
-            query: async (walletId: string) => {
+            queryFn: async (walletId: string) => {
                 try {
                     const coinsSnapshot = await getDocs(collection(db, "Wallets", walletId, "Coins"));
-                    const coins: CoinTransactions[] = [];
-
-                    for (const coinDoc of coinsSnapshot.docs) {
+                    if (coinsSnapshot.empty) return { data: { id: walletId, coins: [] } };
+                    const coinsPromises = coinsSnapshot.docs.map(async coinDoc => {
                         const coinId = coinDoc.id;
                         const transactionsSnap = await getDocs(collection(db, "Wallets", walletId, "Coins", coinId, "Transactions"));
                         const transactions: Transaction[] = transactionsSnap.docs.map(txDoc => ({
                             id: txDoc.id,
                             ...txDoc.data(),
                         } as Transaction));
-                        coins.push({ id: coinId, transactions });
-                    }
+
+                        const parsedTransactions = transactions.map(tx => TransactionScheme.parse(tx));
+
+                        return { id: coinId, transactions: parsedTransactions };
+                    });
+                    const coins = await Promise.all(coinsPromises);
+
                     const wallet: Wallet = { id: walletId, coins };
-                    return wallet;
+                    const parsedWallet = WalletScheme.parse(wallet);
+
+                    return { data: parsedWallet };
                 } catch (error) {
                     console.error(error);
-                    throw error;
+                    return { error };
                 }
             },
             providesTags: (_, __, walletId) => walletId ? [{ type: "Wallet", id: walletId }] : [],
-            transformResponse: (response: Wallet) => {
-                const coins = response.coins.map(coin =>
-                    CoinTransactionsScheme.parse({
-                        id: coin.id,
-                        transactions: coin.transactions.map(tx => TransactionScheme.parse(tx))
-                    })
-                );
-                return WalletScheme.parse({ id: response.id, coins });
-            }
-
         }),
+
         deleteWallet: builder.mutation<void, string>({
-            query: async (walletId) => {
+            queryFn: async (walletId, _api, _extraOptions, _baseQuery) => {
                 try {
                     const itemsRef = collection(db, "Wallets", walletId, "Coins");
                     const itemsSnap = await getDocs(itemsRef);
@@ -112,7 +113,7 @@ export const walletApi = createApi({
                     const walletDocRef = doc(db, "Wallets", walletId);
                     await deleteDoc(walletDocRef);
 
-                    return { data: null };
+                    return { data: undefined };
                 } catch (error) {
                     console.error("Error deleting wallet:", error);
                     return { error };
@@ -120,8 +121,9 @@ export const walletApi = createApi({
             },
             invalidatesTags: (_, __, walletId) => walletId ? [{ type: "Wallet", id: walletId }] : [],
         }),
+
         getWalletCoin: builder.query<CoinTransactions, { coinId: string; walletId: string }>({
-            query: async ({ coinId, walletId }) => {
+            queryFn: async ({ coinId, walletId }, _api, _extraOptions, _baseQuery) => {
                 try {
                     const coinDocRef = doc(db, "Wallets", walletId, "Coins", coinId);
                     const coinSnap = await getDoc(coinDocRef);
@@ -141,10 +143,13 @@ export const walletApi = createApi({
                     return { error };
                 }
             },
-            providesTags: (_, __, { coinId, walletId }) => walletId ? [{ type: "Wallet", id: walletId, coinId }] : [],
+            providesTags: (_, __, { coinId, walletId }) => walletId && coinId ? [{ type: "WalletCoin", id: `${walletId}-${coinId}` }] : [],
+
+
         }),
+
         deleteWalletCoin: builder.mutation<void, { coinId: string, walletId: string }>({
-            query: async ({ coinId, walletId }: { coinId: string, walletId: string }) => {
+            queryFn: async ({ coinId, walletId }, _api, _extraOptions, _baseQuery) => {
                 try {
                     const transactionsRef = collection(db, "Wallets", walletId, "Coins", coinId, "Transactions");
                     const transactionsSnap = await getDocs(transactionsRef);
@@ -157,14 +162,17 @@ export const walletApi = createApi({
                     await deleteDoc(coinDocRef);
 
                     console.log(`Coin ${coinId} deleted from wallet ${walletId}`);
+                    return { data: undefined };
                 } catch (error) {
                     console.error("Error deleting wallet coin:", error);
+                    return { error };
                 }
             },
             invalidatesTags: (_, __, { walletId }) => walletId ? [{ type: "Wallet", id: walletId }] : [],
         }),
+
         getWalletCoinTransaction: builder.query<Transaction, { transactionId: string, coinId: string, walletId: string }>({
-            query: async ({ transactionId, coinId, walletId }) => {
+            queryFn: async ({ transactionId, coinId, walletId }, _api, _extraOptions, _baseQuery) => {
                 try {
                     const transactionDocRef = doc(db, "Wallets", walletId, "Coins", coinId, "Transactions", transactionId);
                     const transactionSnap = await getDoc(transactionDocRef);
@@ -172,59 +180,88 @@ export const walletApi = createApi({
                     if (!transactionSnap.exists()) {
                         return { error: { status: 404, data: "Transaction not found" } };
                     }
-                    return { data: transactionSnap.data() as Transaction };
+
+                    const transaction = TransactionScheme.parse(transactionSnap.data());
+                    return { data: transaction };
                 } catch (error) {
                     console.error("Error getting wallet coin transaction:", error);
                     return { error };
                 }
             },
-            providesTags: (_, __, { transactionId, coinId, walletId }) => walletId ? [{ type: "Wallet", id: walletId, coinId, transactionId }] : [],
-            transformResponse: (response: unknown) => TransactionScheme.parse(response),
+            providesTags: (_, __, { transactionId, coinId, walletId }) =>
+                walletId ? [{ type: "Wallet", id: walletId, coinId, transactionId }] : [],
         }),
-        addWalletCoinTransaction: builder.mutation<Transaction, { transaction: Transaction, coinId: string, walletId: string }>({
-            query: async ({ transaction, coinId, walletId }) => {
-                try {
-                    const transactionsRef = collection(db, "Wallets", walletId, "Coins", coinId, "Transactions");
-                    const transactionDocRef = doc(transactionsRef);
-                    const transactionWithId = { ...transaction, id: transactionDocRef.id };
-                    await setDoc(transactionDocRef, transactionWithId);
-                    return transactionWithId;
-                } catch (error) {
-                    console.error("Error adding wallet coin transaction:", error);
-                    return { error };
-                }
-            },
-            invalidatesTags: (_, __, { walletId, coinId, transaction }) =>
-                walletId ? [{ type: "Wallet", id: walletId, coinId, transaction: transaction.id }] : [],
-            transformResponse: (response: unknown) => TransactionScheme.parse(response),
-        }),
+
+        addWalletCoinTransaction: builder.mutation<Transaction, { transaction: Transaction, coinId: string, walletId: string }>(
+            {
+                queryFn: async ({ transaction, coinId, walletId }, _api, _extraOptions, _baseQuery) => {
+                    try {
+                        const coinDocRef = doc(db, "Wallets", walletId, "Coins", coinId);
+                        const coinSnap = await getDoc(coinDocRef);
+                        if (!coinSnap.exists()) {
+                            //! if coin doesn't exist, create it with createdAt date (need cause Firebase doesn't allow empty documents)
+                            await setDoc(coinDocRef, { createdAt: new Date() });
+                        }
+                        const transactionsRef = collection(db, "Wallets", walletId, "Coins", coinId, "Transactions");
+
+                        const transactionDocRef = doc(transactionsRef);
+                        const transactionWithId = { ...transaction, id: transactionDocRef.id };
+                        await setDoc(transactionDocRef, transactionWithId);
+
+                        const validatedTransaction = TransactionScheme.parse(transactionWithId);
+                        return { data: validatedTransaction };
+                    } catch (error) {
+                        console.error("Error adding wallet coin transaction:", error);
+                        return { error };
+                    }
+                },
+                invalidatesTags: (_, __, { walletId, coinId, transaction }) => [
+                    { type: "Wallet", id: walletId },
+                    { type: "WalletCoin", id: `${walletId}-${coinId}` },
+                    { type: "WalletTransaction", id: `${walletId}-${coinId}-${transaction.id}` },
+                ],
+            }),
+
+
         updateWalletCoinTransaction: builder.mutation<Transaction, { transaction: Transaction, coinId: string, walletId: string }>({
-            query: async ({ transaction, coinId, walletId }) => {
+            queryFn: async ({ transaction, coinId, walletId }, _api, _extraOptions, _baseQuery) => {
                 try {
                     const transactionDocRef = doc(db, "Wallets", walletId, "Coins", coinId, "Transactions", transaction.id);
                     await setDoc(transactionDocRef, transaction);
-                    return transaction;
+
+                    const validatedTransaction = TransactionScheme.parse(transaction);
+                    return { data: validatedTransaction };
                 } catch (error) {
                     console.error("Error updating wallet coin transaction:", error);
                     return { error };
                 }
             },
-            invalidatesTags: (_, __, { walletId, coinId, transaction }) =>
-                walletId ? [{ type: "Wallet", id: walletId, coinId, transaction: transaction.id }] : [],
-            transformResponse: (response: unknown) => TransactionScheme.parse(response),
+            invalidatesTags: (_, __, { walletId, coinId, transaction }) => [
+                { type: "Wallet", id: walletId },
+                { type: "WalletCoin", id: `${walletId}-${coinId}` },
+                { type: "WalletTransaction", id: `${walletId}-${coinId}-${transaction.id}` },
+            ],
+
         }),
+
         deleteWalletCoinTransaction: builder.mutation<void, { transactionId: string, coinId: string, walletId: string }>({
-            query: async ({ transactionId, coinId, walletId }) => {
+            queryFn: async ({ transactionId, coinId, walletId }, _api, _extraOptions, _baseQuery) => {
                 try {
                     const transactionDocRef = doc(db, "Wallets", walletId, "Coins", coinId, "Transactions", transactionId);
                     await deleteDoc(transactionDocRef);
+                    return { data: undefined };
                 } catch (error) {
                     console.error("Error deleting wallet coin transaction:", error);
+                    return { error };
                 }
             },
-            invalidatesTags: (_, __, { walletId, coinId, transactionId }) =>
-                walletId ? [{ type: "Wallet", id: walletId, coinId, transaction: transactionId }] : [],
+            invalidatesTags: (_, __, { walletId, coinId, transactionId }) => [
+                { type: "Wallet", id: walletId },
+                { type: "WalletCoin", id: `${walletId}-${coinId}` },
+                { type: "WalletTransaction", id: `${walletId}-${coinId}-${transactionId}` },
+            ],
         }),
+
     }),
 });
 
