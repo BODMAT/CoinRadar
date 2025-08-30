@@ -35,7 +35,7 @@ export const calcWalletBalanceWithCurrentPrice = (wallet: Wallet, coinsMarketDat
         }
     }
 
-    return totalBalance;
+    return Number(totalBalance.toFixed(2));
 };
 
 export const calcWalletProfitLoss = (wallet: Wallet, coinsMarketData: Coin[]): number => {
@@ -63,10 +63,8 @@ export const calcWalletProfitLoss = (wallet: Wallet, coinsMarketData: Coin[]): n
         }
     }
 
-    return totalCurrentValue - totalSpent;
+    return Number((totalCurrentValue - totalSpent).toFixed(2));
 };
-
-
 
 export const generateUID = (title: string) => {
     const random = Math.random().toString(36).substring(2, 9);
@@ -88,8 +86,9 @@ export function calculateAveragePrice(transactions: Transaction[]): number {
             totalQuantity -= tx.quantity;
         }
     }
+    const result = totalQuantity > 0 ? totalCost / totalQuantity : 0;
 
-    return totalQuantity > 0 ? totalCost / totalQuantity : 0;
+    return Number(result.toFixed(2));
 }
 
 export function calculateAverageBuyingPrice(transactions: Transaction[]): number {
@@ -102,6 +101,7 @@ export function calculateAverageBuyingPrice(transactions: Transaction[]): number
             totalQuantity += tx.quantity;
         }
     }
+    const result = totalQuantity > 0 ? totalCost / totalQuantity : 0;
 
-    return totalQuantity > 0 ? totalCost / totalQuantity : 0;
+    return Number(result.toFixed(2));
 }

@@ -1,5 +1,5 @@
 import { useGetUserQuery } from "../Auth/auth.api";
-import { useDeleteWalletCoinTransactionMutation, useGetWalletQuery, type Transaction, type TransactionWithCoinId } from "./wallet.api";
+import { useDeleteWalletCoinTransactionMutation, useGetWalletQuery, type TransactionWithCoinId } from "./wallet.api";
 import EditSVG from "../../assets/edit.svg"
 import DeleteSVG from "../../assets/cross.svg"
 import { closePopup, openPopup } from "../../portals/popup.slice";

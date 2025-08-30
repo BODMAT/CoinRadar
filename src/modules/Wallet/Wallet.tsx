@@ -8,10 +8,10 @@ export function Wallet() {
             <Header />
             <div className="mt-2 bg-[image:var(--color-background)] rounded-2xl p-3 flex justify-between gap-10 max-lg:flex-col-reverse">
                 <div className="flex-1/2">
-                    {/* <WalletGraph /> */}
+                    <WalletGraph />
                 </div>
                 <div className="flex-1/2">
-                    {/* <MyCoins /> */}
+                    <MyCoins />
                 </div>
             </div>
         </div>
