@@ -1,4 +1,4 @@
-import type { Transaction } from "../modules/Wallet/wallet.api";
+import type { Wallet } from "../modules/Wallet/wallet.api";
 
 export const scrollToSectionById = (
     id: string,
@@ -14,6 +14,14 @@ export const scrollToSectionById = (
     window.scrollTo({ top, behavior: "smooth" });
 };
 
-export const calcSumOfAllTransactions = (transactions: Transaction[]) => {
-    return transactions.reduce((acc, transaction) => acc + (transaction.quantity * transaction.buying_price), 0);
+export const calcSumOfAllTransactions = (wallet: Wallet) => {
+    return wallet.coins.reduce((acc, coin) => acc + coin.transactions.reduce((acc, transaction) => acc + transaction.quantity * transaction.buying_price, 0), 0);
+};
+
+export const generateUID = (title: string) => {
+    const random = Math.random().toString(36).substring(2, 9);
+    const timestamp = Date.now().toString(36);
+    const correctedTitle = title.replace(/[^a-zA-Z0-9]/g, '');
+
+    return `${correctedTitle}_${timestamp}_${random}`;
 };

@@ -24,7 +24,9 @@ export const store = configureStore({
         [walletApi.reducerPath]: walletApi.reducer
     },
     middleware: (getDefault) =>
-        getDefault().concat(authApi.middleware, allCryptoApi.middleware, walletApi.middleware),
+        getDefault({
+            serializableCheck: false,
+        }).concat(authApi.middleware, allCryptoApi.middleware, walletApi.middleware),
 
 });
 
