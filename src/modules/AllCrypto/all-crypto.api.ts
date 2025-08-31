@@ -46,14 +46,6 @@ export const allCryptoApi = createApi({
                 }
             },
         }),
-        getCoin: builder.query<Coin, string>({
-            query: (id) => `coins/${id}?sparkline=true`,
-            transformResponse: (response: unknown) => {
-                const coin: Coin = coinSchema.parse(response);
-                return coin;
-            },
-            providesTags: (_, __, id) => [{ type: "Coin", id }],
-        })
     }),
 
 });

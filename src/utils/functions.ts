@@ -105,3 +105,28 @@ export function calculateAverageBuyingPrice(transactions: Transaction[]): number
 
     return Number(result.toFixed(2));
 }
+
+export const calcTransactionsProfitLoss = (transactions: Transaction[], coinMarketData: Coin): number => {
+    let quantity = 0;
+    let totalSpent = 0;
+
+    for (const tx of transactions) {
+        if (tx.buyOrSell === "buy") {
+            totalSpent += tx.price * tx.quantity;
+            quantity += tx.quantity;
+        } else if (tx.buyOrSell === "sell") {
+            const averagePrice = totalSpent / quantity;
+            totalSpent -= averagePrice * tx.quantity;
+            quantity -= tx.quantity;
+        }
+    }
+
+    if (quantity <= 0) return 0;
+
+    const marketCoin = coinMarketData;
+    if (!marketCoin) return 0;
+
+    const totalCurrentValue = quantity * marketCoin.current_price;
+
+    return Number((totalCurrentValue - totalSpent).toFixed(2));
+};

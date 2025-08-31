@@ -6,19 +6,25 @@ import { closePopup, openPopup } from "../../portals/popup.slice";
 import { useAppDispatch } from "../../store";
 import { ChangeTransactionPopup } from "./ChangeTransactionPopup";
 
-export function WatchTransactionsPopup() {
+export function WatchTransactionsPopup({ coinId }: { coinId: string }) {
     const dispach = useAppDispatch();
     const { data: user } = useGetUserQuery();
     const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
     const [deleteTransaction] = useDeleteWalletCoinTransactionMutation();
     if (!wallet) return null;
 
-    const allTransactions: TransactionWithCoinId[] = wallet.coins
-        .flatMap(coin =>
-            coin.transactions.map(tx => ({ ...tx, coinId: coin.id }))
-        )
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
+    const allTransactions: TransactionWithCoinId[] | undefined =
+        coinId ?
+            wallet.coins
+                .find(coin => coin.id === coinId)
+                ?.transactions.map(tx => ({ ...tx, coinId }))
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            :
+            wallet.coins
+                .flatMap(coin =>
+                    coin.transactions.map(tx => ({ ...tx, coinId: coin.id }))
+                )
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const handleDeleteTransaction = async (transaction: TransactionWithCoinId) => {
         await deleteTransaction({
@@ -47,7 +53,7 @@ export function WatchTransactionsPopup() {
                 <div className="font-bold">Delete</div>
             </div>
 
-            {allTransactions.map(transaction => (
+            {allTransactions && allTransactions.map(transaction => (
                 <div key={transaction.id} className={`text-[15px] text-center max-md:text-[12px] grid grid-cols-7 max-[560px]:grid-cols-6 max-[460px]:grid-cols-5 items-center content-center gap-1 max-md:gap-[1px] p-4 m-1 border-b border-gray-300 rounded-xl ${transaction.buyOrSell === "buy" ? "bg-green-200" : "bg-red-200"}`}>
                     <div className="flex gap-2 items-center mx-auto">
                         <img src={transaction.coinInfo.image} alt={transaction.coinInfo.name} className="w-8 h-8 max-[385px]:hidden" />

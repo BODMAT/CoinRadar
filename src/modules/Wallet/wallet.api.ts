@@ -24,6 +24,17 @@ export interface CoinTransactions {
     transactions: Transaction[];
 }
 
+export interface MyCoinComponent {
+    id: string,
+    name: string,
+    image: string,
+    quantity: number,
+    currentPrise: number,
+    avverageByingPrice: number,
+    profit: number,
+    lastDate: string
+}
+
 export interface Wallet {
     id: string;
     coins: CoinTransactions[];
