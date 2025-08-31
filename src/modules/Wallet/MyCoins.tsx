@@ -89,7 +89,6 @@ export function MyCoins() {
                 </div>
 
                 {sortedCoins && sortedCoins.map((coin) => {
-                    if (coin.quantity <= 0) return null;
                     return (
                         <button
                             onClick={handleOpenCoinPopup(coin.id)}

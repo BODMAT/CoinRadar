@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import Select from "react-select";
+import { useMemo } from "react";
 import { Line } from "react-chartjs-2";
 import {
     Chart as ChartJS,
@@ -9,65 +8,85 @@ import {
     PointElement,
     Tooltip,
     Legend,
-    TimeScale,
     Filler,
+    TimeScale,
 } from "chart.js";
 import 'chartjs-adapter-date-fns';
 import type { ChartOptions } from "chart.js";
 import { useAppSelector } from "../../store";
 import type { Theme } from "../FixedFooter/theme.slice";
+import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
+import { useGetWalletQuery } from "./wallet.api";
+import { useGetUserQuery } from "../Auth/auth.api";
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend, TimeScale, Filler);
 
 type Point = { x: number; y: number };
 
-const durations = [
-    { value: 1, label: "24h" },
-    { value: 7, label: "7d" },
-    { value: 30, label: "30d" },
-    { value: 90, label: "90d" },
-];
-
 export function WalletGraph() {
-    const [duration, setDuration] = useState(durations[1]); // default 7d
-    const [chartData, setChartData] = useState<Point[]>([]);
-    const [loading, setLoading] = useState(false);
-
     const theme: Theme = useAppSelector((state) => state.theme.theme);
+    const { data: user } = useGetUserQuery();
+    const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
+    const { data: allCoins } = useGetAllCoinsQuery();
+
+    //! this algorithm is not good cause luck of real data from Gecko
+    const chartData: Point[] = useMemo(() => {
+        if (!wallet || !allCoins) return [];
+
+        const days = 7;
+        const now = Date.now();
+        const startTime = now - days * 24 * 60 * 60 * 1000;
+
+        const portfolioValues = Array(days).fill(0);
+
+        wallet.coins.forEach(coinWallet => {
+            const coinMarket = allCoins.find(c => c.id === coinWallet.id);
+            if (!coinMarket?.sparkline_in_7d?.price || !coinMarket.sparkline_in_7d.price.length) return;
+
+            const sparkline = coinMarket.sparkline_in_7d.price;
+            const step = sparkline.length / days;
+
+            const dailyQuantities = Array(days).fill(0);
+
+            coinWallet.transactions.forEach(tx => {
+                const txTime = new Date(tx.date).getTime();
+                let dayIndex = Math.floor((txTime - startTime) / (24 * 60 * 60 * 1000));
+                dayIndex = Math.max(0, Math.min(dayIndex, days - 1));
+
+                for (let i = dayIndex; i < days; i++) {
+                    dailyQuantities[i] += tx.buyOrSell === "buy" ? tx.quantity : -tx.quantity;
+                }
+            });
+
+            const firstTx = coinWallet.transactions[0];
+            if (!firstTx) return;
+
+            const firstTxTime = new Date(firstTx.date).getTime();
+            let firstIndex = Math.floor((firstTxTime - startTime) / (24 * 60 * 60 * 1000));
+            firstIndex = Math.max(0, Math.min(firstIndex, days - 1));
+
+            const firstTxPrice = firstTx.price;
+            const firstSparklinePrice = sparkline[Math.floor(firstIndex * step)] || firstTxPrice;
+
+            for (let i = 0; i < days; i++) {
+                const sparkValue = sparkline[Math.floor(i * step)] || firstSparklinePrice;
+                const relativePrice = firstTxPrice * (sparkValue / firstSparklinePrice);
+                portfolioValues[i] += relativePrice * dailyQuantities[i];
+            }
+        });
+
+        return portfolioValues.map((value, i) => ({
+            x: startTime + i * 24 * 60 * 60 * 1000,
+            y: value,
+        }));
+    }, [wallet, allCoins]);
+
 
     const isGrowing = chartData.length > 1 && chartData.at(-1)!.y > chartData[0].y;
-    const lineColor = isGrowing ? "#4caf50" : "#f44336"; // green or red
+    const lineColor = isGrowing ? "#4caf50" : "#f44336";
     const fillColor = isGrowing ? "rgba(76, 175, 80, 0.2)" : "rgba(244, 67, 54, 0.2)";
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            const res = await fetch(
-                `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=${duration.value}`
-            );
-            const json = await res.json();
-            const formatted = json.prices.map((p: [number, number]) => ({
-                x: p[0],
-                y: p[1],
-            }));
-            setChartData(formatted);
-            setLoading(false);
-        };
-        fetchData();
-    }, [duration]);
-
-    const data = {
-        datasets: [
-            {
-                data: chartData,
-                borderColor: lineColor,
-                backgroundColor: fillColor,
-                tension: 0.3,
-                pointRadius: 0,
-                fill: true,
-            },
-        ],
-    };
+    const data = { datasets: [{ data: chartData, borderColor: lineColor, backgroundColor: fillColor, tension: 0.3, pointRadius: 0, fill: true }] };
 
     const options: ChartOptions<"line"> = {
         responsive: true,
@@ -75,9 +94,7 @@ export function WalletGraph() {
         scales: {
             x: {
                 type: "time",
-                time: {
-                    unit: duration.value <= 1 ? "hour" : "day",
-                },
+                time: { unit: "day" },
                 ticks: { color: theme === "dark" ? "#fff" : "#000" },
                 grid: { display: false },
             },
@@ -86,66 +103,16 @@ export function WalletGraph() {
                 grid: { color: theme === "dark" ? "#555" : "#ccc" },
             },
         },
-        plugins: {
-            legend: { display: false },
-        },
+        plugins: { legend: { display: false } },
     };
 
     return (
-        <div className="w-full">
-            <div className="flex flex-col sm:flex-row gap-3 mb-3 items-start sm:items-center w-full">
-                <h1 className="fontTitle text-2xl">Filter:</h1>
-                <Select
-                    options={durations}
-                    value={duration}
-                    onChange={(opt) => setDuration(opt!)}
-                    className=""
-                    styles={{
-                        control: (base) => ({
-                            ...base,
-                            backgroundColor: "transparent",
-                            borderColor: theme === "dark" ? "#fff" : "#000",
-                            color: theme === "dark" ? "#fff" : "#000",
-                            boxShadow: "none",
-                            outline: "none",
-                            '&:hover': {
-                                borderColor: theme === "dark" ? "#aaa" : "#333",
-                            },
-                        }),
-                        singleValue: (base) => ({
-                            ...base,
-                            color: theme === "dark" ? "#fff" : "#000",
-                        }),
-                        menu: (base) => ({
-                            ...base,
-                            backgroundColor: theme === "dark" ? "#222" : "#eee",
-                        }),
-                        option: (base, state) => ({
-                            ...base,
-                            backgroundColor: state.isFocused
-                                ? theme === "dark" ? "#333" : "#ddd"
-                                : theme === "dark" ? "#222" : "#fff",
-                            color: theme === "dark" ? "#fff" : "#000",
-                        }),
-                        dropdownIndicator: (base) => ({
-                            ...base,
-                            color: theme === "dark" ? "#fff" : "#000",
-                            '&:hover': {
-                                color: theme === "dark" ? "#fff" : "#000",
-                            },
-                        }),
-                        indicatorSeparator: () => ({ display: "none" }),
-                    }}
-                />
-
-            </div>
-            <div className="w-full h-[300px]">
-                {loading || chartData.length === 0 ? (
-                    <div className="text-white text-center pt-20">Loading...</div>
-                ) : (
-                    <Line data={data} options={options} />
-                )}
-            </div>
+        <div className="w-full h-[300px]">
+            {chartData.length === 0 ? (
+                <div className="text-center pt-20">No data</div>
+            ) : (
+                <Line data={data} options={options} />
+            )}
         </div>
     );
 }

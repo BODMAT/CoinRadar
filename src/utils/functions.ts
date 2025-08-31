@@ -115,6 +115,7 @@ export const calcTransactionsProfitLoss = (transactions: Transaction[], coinMark
             totalSpent += tx.price * tx.quantity;
             quantity += tx.quantity;
         } else if (tx.buyOrSell === "sell") {
+            if (quantity <= 0) continue; // защита от деления на 0
             const averagePrice = totalSpent / quantity;
             totalSpent -= averagePrice * tx.quantity;
             quantity -= tx.quantity;
@@ -127,6 +128,6 @@ export const calcTransactionsProfitLoss = (transactions: Transaction[], coinMark
     if (!marketCoin) return 0;
 
     const totalCurrentValue = quantity * marketCoin.current_price;
-
     return Number((totalCurrentValue - totalSpent).toFixed(2));
 };
+
