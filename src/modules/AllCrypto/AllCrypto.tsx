@@ -4,12 +4,19 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import type { Coin } from "./all-crypto.api";
 import { openPopup } from "../../portals/popup.slice";
 import { CoinPopup } from "./Coin.popup";
+import { useGetUserQuery } from "../Auth/auth.api";
 
 export function AllCrypto() {
+    const dispach = useAppDispatch();
+    const { data: user } = useGetUserQuery();
     const { page, perPage, coinsPerPage, isAPILoading, allCoins, filteredCoins } = useAppSelector(state => state.allCrypto);
     const skeletonArray: (Coin | undefined)[] = Array.from({ length: perPage });
     const dispatch = useAppDispatch();
     const handleOpenPopup = (coin: Coin) => {
+        if (!user) {
+            dispach(openPopup({ title: "Failure", children: "You need to be logged in to add a transaction" }));
+            return
+        }
         dispatch(openPopup({ title: `${coin.name} about`, children: <CoinPopup coin={coin} /> }));
     }
 

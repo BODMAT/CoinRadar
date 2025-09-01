@@ -45,6 +45,29 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
         })
     }, [stringifiedValues]);
 
+    const [alert, setAlert] = useState({
+        quantity: "",
+        date: "",
+        buyOrSell: "",
+    });
+    useEffect(() => {
+        if (alert.quantity !== "") {
+            setTimeout(() => {
+                setAlert({ ...alert, quantity: "" });
+            }, 2000);
+        }
+        if (alert.date !== "") {
+            setTimeout(() => {
+                setAlert({ ...alert, date: "" });
+            }, 2000);
+        }
+        if (alert.buyOrSell !== "") {
+            setTimeout(() => {
+                setAlert({ ...alert, buyOrSell: "" });
+            }, 2000);
+        }
+    }, [alert]);
+
     const regex = /^\d*\.?\d*$/;
     const handleSubmit = async () => {
         if (!user?.uid) return;
@@ -61,13 +84,64 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
             dispach(openPopup({ title: "Failure", children: error.toString() }));
         }
     }
+
+    const handleChangeDate = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedDate = e.target.value; // "YYYY-MM-DD"
+        const today = new Date().toISOString().split('T')[0];
+        const isCorrectDate = selectedDate <= today;
+        if (!isCorrectDate) {
+            setAlert({ ...alert, date: "Date must be less than or equal to today's date." });
+        } else {
+            setAlert({ ...alert, date: "" });
+        }
+        setForm({
+            ...form,
+            date: selectedDate <= today ? selectedDate : form.date
+        });
+    };
+
+    const currentCoinInWallet = transaction?.transactions.reduce((acc, transaction) => {
+        if (transaction.buyOrSell === "buy") {
+            return acc + transaction.quantity;
+        } else {
+            return acc - transaction.quantity;
+        }
+    }, 0) || 0;
+
+    const handleChangeQuantity = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        if (form.buyOrSell === "sell") {
+            if (Number(value) > currentCoinInWallet) {
+                setAlert({ ...alert, quantity: "You don't have enough coins in your wallet." });
+                return
+            } else {
+                setAlert({ ...alert, quantity: "" });
+            }
+        }
+        if (regex.test(value)) {
+            setStringifiedValues({ ...stringifiedValues, quantity: value, total_price: (Number(value) * Number(stringifiedValues.price)).toString() });
+        }
+    }
+
+    const handleChangeBuyOrSell = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const isAbletoSetSell = currentCoinInWallet >= form.quantity;
+        const value = e.target.value as "buy" | "sell";
+        if (value === "sell" && !isAbletoSetSell) {
+            setAlert({ ...alert, buyOrSell: "You don't have enough coins in your wallet." });
+            return
+        } else {
+            setAlert({ ...alert, buyOrSell: "" });
+        }
+        setForm({ ...form, buyOrSell: value });
+    }
+
     return (
         <div className="flex flex-col gap-5">
             <div className="flex justify-between gap-5 items-center mx-auto max-md:flex-col">
                 <img className="w-12 h-12" src={coin.image} alt={coin.name} />
                 <h2 className="font-bold text-xl">{coin.name}</h2>
                 <div className="">
-                    <h3>Already in your wallet</h3>
+                    <h3>Already in your wallet: {currentCoinInWallet}</h3>
                     <h3>Quantity: {transaction ? transaction?.transactions.reduce((acc, transaction) => {
                         if (transaction.buyOrSell === "buy") {
                             return acc + transaction.quantity;
@@ -83,11 +157,9 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                 <div className="px-2 border-2 border-black rounded fontTitle">
                     <label htmlFor="quantity">Quantity: </label>
                     <input className="p-2 focus:outline-none focus:ring-0" type="string" placeholder="quantity..." name="quantity" id="quantity" value={stringifiedValues.quantity} onChange={(e) => {
-                        const value = e.target.value;
-                        if (regex.test(value)) {
-                            setStringifiedValues({ ...stringifiedValues, quantity: value, total_price: (Number(value) * Number(stringifiedValues.price)).toString() });
-                        }
+                        handleChangeQuantity(e);
                     }} />
+                    {alert.quantity && <p className="text-red-500">{alert.quantity}</p>}
                 </div>
                 <div className="px-2 border-2 border-black rounded fontTitle">
                     <label htmlFor="buying_price">{form.buyOrSell.slice(0, 1).toUpperCase() + form.buyOrSell.slice(1)} price: </label>
@@ -110,14 +182,15 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                 <div className="px-2 border-2 border-black rounded fontTitle">
                     <label htmlFor="date">Date: </label>
                     <input className="p-2 focus:outline-none focus:ring-0" type="date" placeholder="date..." name="date" id="date" value={form.date} onChange={(e) => {
-                        const value = e.target.value;
-                        setForm({ ...form, date: value });
+                        handleChangeDate(e);
                     }} />
+                    {alert.date && <p className="text-red-500">{alert.date}</p>}
                 </div>
-                <select value={form.buyOrSell} onChange={(e) => setForm({ ...form, buyOrSell: e.target.value as "buy" | "sell" })} className={`px-2 border-2 border-black rounded fontTitle p-2 ${form.buyOrSell === "buy" ? "bg-green-500" : "bg-red-500"}`}>
+                <select value={form.buyOrSell} onChange={(e) => handleChangeBuyOrSell(e)} className={`px-2 border-2 border-black rounded fontTitle p-2 ${form.buyOrSell === "buy" ? "bg-green-500" : "bg-red-500"}`}>
                     <option value="buy" className="bg-green-500">Buy</option>
                     <option value="sell" className="bg-red-500">Sell</option>
                 </select>
+                {alert.buyOrSell && <p className="text-red-500">{alert.buyOrSell}</p>}
                 <button type="submit" disabled={!form.quantity} className="px-2 border-2 border-black rounded fontTitle p-2 bg-[var(--color-card)] cursor-pointer transitioned hover:scale-101 text-[var:--color-text]">{form.quantity ? "Add transaction" : "To add transaction you need to enter quantity"}</button>
             </form>
         </div>

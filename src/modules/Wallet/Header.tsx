@@ -12,10 +12,18 @@ export function Header() {
 
     const dispach = useAppDispatch();
     const handleOpenChooseCoinPopup = () => {
+        if (!user) {
+            dispach(openPopup({ title: "Failure", children: "You need to be logged in to add a transaction" }));
+            return
+        }
         dispach(openPopup({ title: "Choose coin", children: <ChooseCoinPopup /> }));
     }
 
     const handleOpenWatchTransactionsPopup = () => {
+        if (!user) {
+            dispach(openPopup({ title: "Failure", children: "You need to be logged in to watch transactions" }));
+            return
+        }
         dispach(openPopup({ title: "Transactions", children: <WatchTransactionsPopup /> }));
     }
 

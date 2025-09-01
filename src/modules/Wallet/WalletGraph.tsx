@@ -29,64 +29,59 @@ export function WalletGraph() {
     const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
     const { data: allCoins } = useGetAllCoinsQuery();
 
-    //! this algorithm is not good cause luck of real data from Gecko
+    //! this algorithm is not optimal, cause luck of CoinGecko API or its limits for free users
     const chartData: Point[] = useMemo(() => {
         if (!wallet || !allCoins) return [];
 
-        const days = 7;
-        const now = Date.now();
-        const startTime = now - days * 24 * 60 * 60 * 1000;
+        const result: Point[] = [];
 
-        const portfolioValues = Array(days).fill(0);
-
-        wallet.coins.forEach(coinWallet => {
-            const coinMarket = allCoins.find(c => c.id === coinWallet.id);
-            if (!coinMarket?.sparkline_in_7d?.price || !coinMarket.sparkline_in_7d.price.length) return;
-
-            const sparkline = coinMarket.sparkline_in_7d.price;
-            const step = sparkline.length / days;
-
-            const dailyQuantities = Array(days).fill(0);
-
-            coinWallet.transactions.forEach(tx => {
-                const txTime = new Date(tx.date).getTime();
-                let dayIndex = Math.floor((txTime - startTime) / (24 * 60 * 60 * 1000));
-                dayIndex = Math.max(0, Math.min(dayIndex, days - 1));
-
-                for (let i = dayIndex; i < days; i++) {
-                    dailyQuantities[i] += tx.buyOrSell === "buy" ? tx.quantity : -tx.quantity;
-                }
-            });
-
-            const firstTx = coinWallet.transactions[0];
-            if (!firstTx) return;
-
-            const firstTxTime = new Date(firstTx.date).getTime();
-            let firstIndex = Math.floor((firstTxTime - startTime) / (24 * 60 * 60 * 1000));
-            firstIndex = Math.max(0, Math.min(firstIndex, days - 1));
-
-            const firstTxPrice = firstTx.price;
-            const firstSparklinePrice = sparkline[Math.floor(firstIndex * step)] || firstTxPrice;
-
-            for (let i = 0; i < days; i++) {
-                const sparkValue = sparkline[Math.floor(i * step)] || firstSparklinePrice;
-                const relativePrice = firstTxPrice * (sparkValue / firstSparklinePrice);
-                portfolioValues[i] += relativePrice * dailyQuantities[i];
-            }
+        const today = new Date();
+        const last7Days = Array.from({ length: 7 }).map((_, i) => {
+            const d = new Date();
+            d.setDate(today.getDate() - (6 - i));
+            return d;
         });
 
-        return portfolioValues.map((value, i) => ({
-            x: startTime + i * 24 * 60 * 60 * 1000,
-            y: value,
-        }));
+        for (const day of last7Days) {
+            let totalValue = 0;
+
+            for (const coinData of wallet.coins) {
+                let quantity = 0;
+
+                for (const tx of coinData.transactions) {
+                    const txDate = new Date(tx.date);
+                    if (txDate <= day) {
+                        if (tx.buyOrSell === "buy") quantity += tx.quantity;
+                        else if (tx.buyOrSell === "sell") quantity -= tx.quantity;
+                    }
+                }
+
+                const marketCoin = allCoins.find(c => c.id === coinData.id);
+                const price = marketCoin ? marketCoin.current_price : 0;
+
+                totalValue += quantity * price;
+            }
+
+            result.push({ x: day.getTime(), y: Number(totalValue.toFixed(2)) });
+        }
+
+        return result;
     }, [wallet, allCoins]);
 
-
-    const isGrowing = chartData.length > 1 && chartData.at(-1)!.y > chartData[0].y;
+    const isGrowing = chartData.length > 1 && chartData.at(-1)!.y > chartData[0]!.y;
     const lineColor = isGrowing ? "#4caf50" : "#f44336";
     const fillColor = isGrowing ? "rgba(76, 175, 80, 0.2)" : "rgba(244, 67, 54, 0.2)";
 
-    const data = { datasets: [{ data: chartData, borderColor: lineColor, backgroundColor: fillColor, tension: 0.3, pointRadius: 0, fill: true }] };
+    const data = {
+        datasets: [{
+            data: chartData,
+            borderColor: lineColor,
+            backgroundColor: fillColor,
+            tension: 0.3,
+            pointRadius: 0,
+            fill: true
+        }]
+    };
 
     const options: ChartOptions<"line"> = {
         responsive: true,

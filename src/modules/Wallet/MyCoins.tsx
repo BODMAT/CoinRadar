@@ -53,9 +53,7 @@ export function MyCoins() {
     const [sortedCoins, setSortedCoins] = useState<MyCoinComponent[] | null>(null);
     const [selected, setSelected] = useState<{ value: string; label: string } | null>(null);
     useEffect(() => {
-        if (coinInfo.length) {
-            setSortedCoins(coinInfo);
-        }
+        setSortedCoins(coinInfo);
     }, [coinInfo]);
 
     const handleOpenCoinPopup = (id: string) => () => {

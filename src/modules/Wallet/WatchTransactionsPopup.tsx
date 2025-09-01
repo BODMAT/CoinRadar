@@ -6,7 +6,7 @@ import { closePopup, openPopup } from "../../portals/popup.slice";
 import { useAppDispatch } from "../../store";
 import { ChangeTransactionPopup } from "./ChangeTransactionPopup";
 
-export function WatchTransactionsPopup({ coinId }: { coinId: string }) {
+export function WatchTransactionsPopup({ coinId }: { coinId?: string }) {
     const dispach = useAppDispatch();
     const { data: user } = useGetUserQuery();
     const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });

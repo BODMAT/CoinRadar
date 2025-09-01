@@ -154,8 +154,9 @@ export const walletApi = createApi({
                     return { error };
                 }
             },
-            providesTags: (_, __, { coinId, walletId }) => walletId && coinId ? [{ type: "WalletCoin", id: `${walletId}-${coinId}` }] : [],
-
+            providesTags: (_, __, { coinId, walletId }) => [
+                { type: "WalletCoin", id: `${walletId}-${coinId}` }
+            ],
 
         }),
 
@@ -179,7 +180,7 @@ export const walletApi = createApi({
                     return { error };
                 }
             },
-            invalidatesTags: (_, __, { walletId }) => walletId ? [{ type: "Wallet", id: walletId }] : [],
+            invalidatesTags: (_, __, { coinId, walletId }) => walletId ? [{ type: "Wallet", id: walletId }, { type: "WalletCoin", id: `${walletId}-${coinId}` }] : [],
         }),
 
         getWalletCoinTransaction: builder.query<Transaction, { transactionId: string, coinId: string, walletId: string }>({
@@ -200,7 +201,7 @@ export const walletApi = createApi({
                 }
             },
             providesTags: (_, __, { transactionId, coinId, walletId }) =>
-                walletId ? [{ type: "Wallet", id: walletId, coinId, transactionId }] : [],
+                walletId ? [{ type: "Wallet", id: walletId }, { type: "WalletTransaction", id: `${walletId}-${coinId}-${transactionId}` }, { type: "WalletCoin", id: `${walletId}-${coinId}` }] : [],
         }),
 
         addWalletCoinTransaction: builder.mutation<Transaction, { transaction: Transaction, coinId: string, walletId: string }>(
