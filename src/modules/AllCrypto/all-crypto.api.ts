@@ -21,7 +21,10 @@ export const coinSchema = z.object({
     image: z.string(),
     current_price: z.number(),
     ath: z.number(),
-    price_change_percentage_24h: z.number(),
+    price_change_percentage_24h: z.preprocess(
+        (val) => (typeof val === "number" ? val : 0),
+        z.number()
+    ),
     sparkline_in_7d: z.object({
         price: z.array(z.number()),
     }),
@@ -38,7 +41,9 @@ export const allCryptoApi = createApi({
         getAllCoins: builder.query<Coin[], void>({
             query: () =>
                 `coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=true`,
-            transformResponse: (response: unknown) => z.array(coinSchema).parse(response),
+            transformResponse: (response: unknown) =>
+                z.array(coinSchema).parse(response),
+
             providesTags: [{ type: "Coin", id: "LIST" }],
             extraOptions: {
                 retry: (failureCount: number) => {

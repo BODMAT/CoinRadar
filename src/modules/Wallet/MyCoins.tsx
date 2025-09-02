@@ -77,11 +77,11 @@ export function MyCoins() {
                 />
             </div>
             <div className="">
-                <div className="grid items-center grid-cols-6 max-[420px]:grid-cols-4 font-semibold border-b pb-2 text-sm text-gray-700 dark:text-gray-200 max-[420px]:text-[13px]">
+                <div className="grid items-center grid-cols-6 max-md:grid-cols-5 max-[420px]:!grid-cols-4 font-semibold border-b pb-2 text-sm text-gray-700 dark:text-gray-200 max-[420px]:text-[13px]">
                     <div>Name</div>
                     <div className="text-center">Quantity</div>
                     <div className="text-center">Current Price</div>
-                    <div className="text-center">Average Buying Price</div>
+                    <div className="text-center max-md:hidden">Average Buying Price</div>
                     <div className="text-center">Profit</div>
                     <div className="text-center max-[420px]:hidden">Date</div>
                 </div>
@@ -91,7 +91,7 @@ export function MyCoins() {
                         <button
                             onClick={handleOpenCoinPopup(coin.id)}
                             key={coin.id}
-                            className="cursor-pointer grid grid-cols-6 max-[420px]:grid-cols-4 items-center border-b py-2 text-sm hover:bg-gray-100/10 w-full max-[420px]:text-[13px]"
+                            className="cursor-pointer grid grid-cols-6 max-md:grid-cols-5 max-[420px]:!grid-cols-4 items-center border-b py-2 text-sm hover:bg-gray-100/10 w-full max-[420px]:text-[13px]"
                         >
                             <div className="flex items-center gap-2">
                                 <img src={coin.image} alt={coin.name} className="w-5 h-5" />
@@ -99,7 +99,7 @@ export function MyCoins() {
                             </div>
                             <div>{coin.quantity}</div>
                             <div>${coin.currentPrise}</div>
-                            <div>${coin.avverageByingPrice}</div>
+                            <div className="max-md:hidden">${coin.avverageByingPrice}</div>
                             <div>{coin.profit}$</div>
                             <div className="max-[420px]:hidden">{coin.lastDate}</div>
                         </button>
