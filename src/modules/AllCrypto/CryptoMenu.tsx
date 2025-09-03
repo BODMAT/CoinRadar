@@ -30,6 +30,7 @@ export function CryptoMenu() {
                 {/* search */}
                 <div className="max-[500px]:w-full flex items-center gap-2 bg-[var(--color-card)] px-3 py-2 rounded border border-white/20">
                     <input
+                        id="search-input"
                         value={inputValue}
                         onChange={e => setInputValue(e.target.value)}
                         type="text"

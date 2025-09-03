@@ -5,10 +5,16 @@ import { FixedFooter } from "../FixedFooter/FixedFooter";
 import { FixedHeader } from "../FixedHeader/FixedHeader";
 import { HomePage } from "../HomePage/HomePage";
 import { AllCrypto } from "../AllCrypto/AllCrypto";
-import { Wallet } from "../Wallet/Wallet";
 import { fetchAllCoinsThunk } from "../AllCrypto/all-crypto.thunk";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { useAppDispatch } from "../../store";
+import { useOnScreen } from "../../hooks/useOnScreen";
+
+const Wallet = lazy(() =>
+  import("../Wallet/Wallet").then((module) => ({
+    default: module.Wallet,
+  }))
+);
 
 export function App() {
   useApplyTheme();
@@ -17,6 +23,8 @@ export function App() {
   useEffect(() => {
     dispatch(fetchAllCoinsThunk());
   }, [dispatch]);
+
+  const [ref, isVisible] = useOnScreen<HTMLDivElement>("200px");
   return (
     <div className="relative">
       <div className="fontText relative transitioned flex flex-col justify-between max-w-full overflow-hidden">
@@ -27,9 +35,13 @@ export function App() {
           </section>
           <section id="section2">
             <AllCrypto />
-          </section>
-          <section id="section3">
-            <Wallet />
+          </section >
+          <section id="section3" ref={ref}>
+            {isVisible && (
+              <Suspense fallback={<div>Loading...</div>}>
+                <Wallet />
+              </Suspense>
+            )}
           </section>
         </main>
         <FixedFooter />
