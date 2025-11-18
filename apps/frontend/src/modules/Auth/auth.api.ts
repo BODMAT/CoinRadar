@@ -1,96 +1,139 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { z } from "zod";
+import { UserSchema, type AuthResponse, type Login, type Register, type UserSafe } from "./auth.schema";
 
-export const userSchema = z.object({
-    uid: z.string(),
-    displayName: z.string(),
-    email: z.string(),
-    photoURL: z.string().nullable(),
-    // ВАЖЛИВО: Додаємо поле token, яке має повертати ваш бекенд для авторизації
-    token: z.string().optional(),
-});
-
-export type UserSafe = z.infer<typeof userSchema>;
-
-const BASE_URL = "http://localhost:4000/api/v1/";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/";
 
 export const authApi = createApi({
     reducerPath: "authApi",
-    // Використовуємо fetchBaseQuery для взаємодії з власним бекендом
-    baseQuery: fetchBaseQuery({ baseUrl: BASE_URL }),
+    baseQuery: fetchBaseQuery({
+        baseUrl: BASE_URL,
+        prepareHeaders: (headers) => {
+            // prepareHeaders використовується для додавання заголовків до запитів
+            const stored = localStorage.getItem("user-storage-coinradar");
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (parsed && parsed.token) {
+                        headers.set("Authorization", `Bearer ${parsed.token}`);
+                    }
+                } catch (e) {
+                    console.error("Error parsing token", e);
+                }
+            }
+            return headers;
+        },
+    }),
     tagTypes: ["User"],
     endpoints: (builder) => ({
-        // -----------------------------------------------------------
-        // 1. GET USER (Отримання даних користувача з LocalStorage)
-        // -----------------------------------------------------------
         getUser: builder.query<UserSafe | null, void>({
             queryFn: async () => {
                 try {
-                    // Логіка читання з LocalStorage залишається на клієнті
-                    // ми зберігаємо дані та токен користувача для сесії.
                     const stored = localStorage.getItem("user-storage-coinradar");
                     if (!stored) return { data: null };
-                    // *ВАЖЛИВО*: Парсимо схему, включаючи потенційний token.
-                    const parsed = userSchema.parse(JSON.parse(stored));
+                    const parsed = UserSchema.parse(JSON.parse(stored));
                     return { data: parsed };
                 } catch {
+                    console.error("Помилка отримання користувача");
                     return { data: null };
                 }
             },
             providesTags: [{ type: "User", id: "CURRENT" }],
         }),
 
-        // -----------------------------------------------------------
-        // 2. LOGIN USER (Запит на БЕКЕНД з логіном/паролем)
-        // POST /auth/login
-        // -----------------------------------------------------------
-        loginUser: builder.mutation<UserSafe, { email: string, password: string }>({ // Змінюємо тип аргументу на облікові дані
+        //REGISTER USER
+        registerUser: builder.mutation<AuthResponse, Register>({
+            query: (credentials) => ({
+                url: "auth/register",
+                method: "POST",
+                body: credentials,
+            }),
+            async onQueryStarted(_, { dispatch, queryFulfilled }) {
+                try {
+                    const { data: responseData } = await queryFulfilled;
+                    const userData = responseData.user;
+                    const parsedUser = UserSchema.parse(userData);
+                    localStorage.setItem("user-storage-coinradar", JSON.stringify(parsedUser));
+
+                    //! RTK MANUAL INVALIDATION
+                    dispatch(
+                        authApi.util.invalidateTags([{ type: "User", id: parsedUser.login }])
+                    );
+
+                    dispatch(
+                        authApi.util.updateQueryData('getUser', undefined, () => {
+                            return parsedUser;
+                        })
+                    );
+                } catch (error) {
+                    console.error("Помилка реєстрації:", error);
+                }
+            },
+            invalidatesTags: [], //! RTK MANUAL INVALIDATION
+        }),
+
+        //LOGIN USER
+        loginUser: builder.mutation<AuthResponse, Login>({
             query: (credentials) => ({
                 url: "auth/login",
                 method: "POST",
-                body: credentials, // Припускаємо, що бекенд прийме { email, password }
+                body: credentials,
             }),
-            // Обробка успішної відповіді
-            async onQueryStarted(_, { queryFulfilled }) {
+            async onQueryStarted(_, { dispatch, queryFulfilled }) {
                 try {
-                    const { data: userData } = await queryFulfilled;
+                    const { data: responseData } = await queryFulfilled;
+                    const userData = responseData.user;
 
-                    // *ВАЖЛИВО*: Зберігаємо дані (включно з токеном), які повернув бекенд
-                    const parsedUser = userSchema.parse(userData);
+                    const parsedUser = UserSchema.parse(userData);
                     localStorage.setItem("user-storage-coinradar", JSON.stringify(parsedUser));
 
+                    //! RTK MANUAL INVALIDATION
+                    dispatch(
+                        authApi.util.invalidateTags([{ type: "User", id: parsedUser.login }])
+                    );
+
+                    dispatch(
+                        authApi.util.updateQueryData('getUser', undefined, () => {
+                            return parsedUser;
+                        })
+                    );
                 } catch (error) {
-                    // Обробка помилок входу
                     console.error("Помилка входу:", error);
                 }
             },
-            invalidatesTags: [{ type: "User", id: "CURRENT" }],
+            invalidatesTags: [], //! RTK MANUAL INVALIDATION
         }),
 
-        // -----------------------------------------------------------
-        // 3. LOGOUT USER (Запит на БЕКЕНД для виходу/відкликання токена)
-        // POST /auth/logout (опціонально, але хороша практика)
-        // -----------------------------------------------------------
+        //LOGOUT USER
         logoutUser: builder.mutation<void, void>({
-            query: () => ({
-                url: "auth/logout", // Припускаємо, що бекенд відкличе токен
-                method: "POST",
-            }),
-            async onQueryStarted(_, { queryFulfilled }) {
+            //! ФЕЙКОВИЙ ЗАПИТ - НА БД НЕМА REFRESH TOKEN
+            queryFn: async () => {
+                return { data: undefined };
+            },
+
+            async onQueryStarted(_, { dispatch, queryFulfilled }) {
                 try {
                     await queryFulfilled;
                     localStorage.removeItem("user-storage-coinradar");
+
+                    dispatch(
+                        authApi.util.updateQueryData('getUser', undefined, () => {
+                            return null;
+                        })
+                    );
+
                 } catch (error) {
-                    // Навіть якщо бекенд-запит на вихід не вдався, ми видаляємо локальну сесію
                     localStorage.removeItem("user-storage-coinradar");
-                    console.error("Вихід з системи на сервері не вдався, але локальна сесія очищена.", error);
+                    console.error("Помилка виходу (фейковий запит):", error);
+                    dispatch(
+                        authApi.util.updateQueryData('getUser', undefined, () => {
+                            return null;
+                        })
+                    );
                 }
             },
-            invalidatesTags: [{ type: "User", id: "CURRENT" }],
+            invalidatesTags: [], //! RTK MANUAL INVALIDATION
         }),
     }),
 });
 
-// *ВАЖЛИВО*: Якщо ви переходите на логін/пароль, 
-// вам потрібно буде змінити використання useLoginUserMutation у ваших компонентах.
-export const { useLogoutUserMutation, useGetUserQuery, useLoginUserMutation } = authApi;
+export const { useLogoutUserMutation, useGetUserQuery, useLoginUserMutation, useRegisterUserMutation } = authApi;

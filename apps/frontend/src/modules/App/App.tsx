@@ -28,7 +28,7 @@ export function App() {
     <div className="relative">
       <div className="fontText relative transitioned flex flex-col justify-between max-w-full overflow-hidden">
         <FixedHeader />
-        <main className="myContainer text-[var(--color-text)] transitioned">
+        <main className="myContainer text-(--color-text) transitioned">
           <section id="section1">
             <HomePage />
           </section>

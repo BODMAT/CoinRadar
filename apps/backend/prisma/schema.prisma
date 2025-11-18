@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BuyOrSell {
+  buy
+  sell
+}
+
+model CoinInfo {
+  id                          String         @id @default(uuid())
+  current_price               Decimal        @db.Decimal(30, 10)
+  image                       String
+  name                        String         @unique
+  price_change_percentage_24h Decimal        @db.Decimal(10, 4)
+  symbol                      String         @unique
+  transactions                Transactions[]
+}
+
+model Transactions {
+  id         String    @id @default(uuid())
+  buyOrSell  BuyOrSell
+  coinInfoId String
+  coinInfo   CoinInfo  @relation(fields: [coinInfoId], references: [id])
+  date       DateTime  @default(now()) @db.Date
+  price      Decimal   @db.Decimal(30, 10)
+  quantity   Decimal   @db.Decimal(30, 10)
+  walletId   String
+  wallet     Wallet    @relation(fields: [walletId], references: [id])
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  name      String   @default("hot")
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  transactions Transactions[]
+}
+
+model User {
+  id       String   @id @default(uuid())
+  login    String   @unique
+  password String
+  email    String?  @unique
+  wallets  Wallet[]
+}

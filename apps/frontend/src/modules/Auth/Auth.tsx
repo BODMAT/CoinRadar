@@ -1,26 +1,27 @@
-import { useGetUserQuery, useLoginUserMutation, useLogoutUserMutation } from "./auth.api";
+import { openPopup } from "../../portals/popup.slice";
+import { useAppDispatch } from "../../store";
+import { useGetUserQuery } from "./auth.api";
+import { AuthPopup } from "./AuthPopup";
 
 export function Auth() {
     const { data: currentUser, isLoading } = useGetUserQuery();
-    const [loginUser] = useLoginUserMutation();
-    const [logoutUser] = useLogoutUserMutation();
 
-    const handleLogin = async () => {
-        await logoutUser();
-        await loginUser();
-    };
+    const dispatch = useAppDispatch();
+    const handleOpenPopup = () => {
+        dispatch(openPopup({ title: `${currentUser ? "USER: " + currentUser.login : "Auth"}`, children: <AuthPopup /> }));
+    }
 
     return (
         <button
-            onClick={handleLogin}
-            className="flex justify-center items-center text-center px-9 py-2 bg-[var(--color-card)] cursor-pointer rounded transitioned hover:scale-105 text-[white] border-[white] border-2"
+            onClick={handleOpenPopup}
+            className="flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[white] border-[white] border-2 max-w-[300px] overflow-x-auto"
         >
             {isLoading ? (
                 "Loading..."
             ) : currentUser ? (
-                currentUser?.displayName ?? "Authenticated"
+                currentUser?.login ?? "Authenticated"
             ) : (
-                "Auth"
+                "Sign in"
             )}
 
         </button>
