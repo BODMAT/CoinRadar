@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('../prisma');
 const z = require('zod');
 const { RegisterSchema, LoginSchema, UserSchema } = require('../models/AuthSchema');
-const handleZodError = require('../utils/helpers');
+const { handleZodError } = require('../utils/helpers');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const saltRounds = 10;
@@ -117,7 +117,8 @@ exports.loginUser = async (req: Request, res: Response) => {
             res.status(500).json({ error: 'Server error during response formatting.' });
         }
 
-    } catch (error) {
+    } catch (error: any) {
+
         if (error instanceof z.ZodError) {
             return handleZodError(res, error);
         }

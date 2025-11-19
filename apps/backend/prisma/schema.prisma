@@ -11,6 +11,8 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  //! 7.0.0 - не стабільна версія тому залишив (6.19.0) без prisma.config.ts 
+  //! 7.0.0 - (a high-severity vulnerability in the 'hono' package)
 }
 
 enum BuyOrSell {
@@ -48,6 +50,8 @@ model Wallet {
   user      User     @relation(fields: [userId], references: [id])
 
   transactions Transactions[]
+
+  @@unique([name, userId]) //Композитний унікальний індекс - в межах одного користувача (userId)
 }
 
 model User {
