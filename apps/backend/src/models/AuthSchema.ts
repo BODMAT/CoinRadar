@@ -1,4 +1,4 @@
-const { WalletSchema } = require('../models/WalletSchema');
+const { WalletListItemResponseSchema } = require('../models/WalletSchema');
 const z = require('zod');
 
 const UserSchema = z.object({
@@ -7,6 +7,8 @@ const UserSchema = z.object({
     email: z.string().email().nullable().optional(),
 
     token: z.string().optional(), // Токен (Access Token)
+
+    wallets: z.array(WalletListItemResponseSchema).optional(), // Optional (without - from auth service)
 });
 
 const RegisterSchema = z.object({

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { WalletListItemResponseSchema } from '../Wallet/wallet.schema';
 
 export const UserSchema = z.object({
     uid: z.string().uuid("UID має бути UUID").optional(),
@@ -6,7 +7,7 @@ export const UserSchema = z.object({
     email: z.string().email().nullable().optional(),
 
     token: z.string().optional(), // Токен (Access Token)
-    //! wallets: z.array(z.string()).optional(), in future
+    wallets: z.array(WalletListItemResponseSchema).optional(),
 });
 
 export type UserSafe = z.infer<typeof UserSchema>;

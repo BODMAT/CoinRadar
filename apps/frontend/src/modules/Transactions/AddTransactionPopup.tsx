@@ -1,13 +1,13 @@
 import type { Coin } from "../AllCrypto/all-crypto.api";
-import { useAddWalletCoinTransactionMutation, useGetWalletCoinQuery, type Transaction } from "./wallet.api";
+import { useAddWalletCoinTransactionMutation, useGetWalletCoinQuery, type Transaction } from "./transaction.api";
 import { calculateAverageBuyingPrice, generateUID } from "../../utils/functions";
 import { useEffect, useState } from "react";
-import { useGetUserQuery } from "../Auth/auth.api";
 import { closePopup, openPopup } from "../../portals/popup.slice";
-import { useAppDispatch } from "../../store";
+import { useAppDispatch, useAppSelector } from "../../store";
 export function AddTransactionPopup({ coin }: { coin: Coin }) {
     const dispach = useAppDispatch();
-    const { data: user } = useGetUserQuery();
+
+    const user = useAppSelector(state => state.auth.user);
 
     const { data: transaction } = useGetWalletCoinQuery(
         { walletId: user?.uid!, coinId: coin.id },

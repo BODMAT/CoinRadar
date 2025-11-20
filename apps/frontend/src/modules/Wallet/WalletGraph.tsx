@@ -16,8 +16,7 @@ import type { ChartOptions } from "chart.js";
 import { useAppSelector } from "../../store";
 import type { Theme } from "../FixedFooter/theme.slice";
 import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
-import { useGetWalletQuery } from "./wallet.api";
-import { useGetUserQuery } from "../Auth/auth.api";
+import { useGetWalletQuery } from "../Transactions/transaction.api";
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend, TimeScale, Filler);
 
@@ -25,7 +24,7 @@ type Point = { x: number; y: number };
 
 export function WalletGraph() {
     const theme: Theme = useAppSelector((state) => state.theme.theme);
-    const { data: user } = useGetUserQuery();
+    const user = useAppSelector(state => state.auth.user);
     const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
     const { data: allCoins } = useGetAllCoinsQuery();
 

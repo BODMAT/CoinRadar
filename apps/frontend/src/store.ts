@@ -7,10 +7,14 @@ import allCryptoSlice from './modules/AllCrypto/all-crypto.slice';
 import { authApi } from './modules/Auth/auth.api';
 import { allCryptoApi } from './modules/AllCrypto/all-crypto.api';
 import { walletApi } from './modules/Wallet/wallet.api';
+import { transactionApi } from './modules/Transactions/transaction.api';
+import authReducer from './modules/Auth/auth.slice';
+
 //! low coupling high cohesion (slicess + component)
 export const store = configureStore({
     reducer: {
         // practice with redux + toolkit
+        auth: authReducer,
         scroll: scrollReducer,
         theme: themeReducer,
         popup: popupSlice,
@@ -21,12 +25,13 @@ export const store = configureStore({
         // practice RTK Query
         [authApi.reducerPath]: authApi.reducer,
         [allCryptoApi.reducerPath]: allCryptoApi.reducer,
-        [walletApi.reducerPath]: walletApi.reducer
+        [walletApi.reducerPath]: walletApi.reducer,
+        [transactionApi.reducerPath]: transactionApi.reducer
     },
     middleware: (getDefault) =>
         getDefault({
             serializableCheck: false,
-        }).concat(authApi.middleware, allCryptoApi.middleware, walletApi.middleware),
+        }).concat(authApi.middleware, allCryptoApi.middleware, walletApi.middleware, transactionApi.middleware),
 
 });
 

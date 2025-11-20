@@ -4,11 +4,10 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import type { Coin } from "./all-crypto.api";
 import { openPopup } from "../../portals/popup.slice";
 import { CoinPopup } from "./Coin.popup";
-import { useGetUserQuery } from "../Auth/auth.api";
 
 export function AllCrypto() {
     const dispach = useAppDispatch();
-    const { data: user } = useGetUserQuery();
+    const user = useAppSelector(state => state.auth.user);
     const { page, perPage, coinsPerPage, isAPILoading, allCoins, filteredCoins } = useAppSelector(state => state.allCrypto);
     const skeletonArray: (Coin | undefined)[] = Array.from({ length: perPage });
     const dispatch = useAppDispatch();

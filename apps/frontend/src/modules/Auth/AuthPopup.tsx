@@ -3,7 +3,6 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import {
     useLoginUserMutation,
     useRegisterUserMutation,
-    useGetUserQuery,
     useLogoutUserMutation
 } from "./auth.api";
 import {
@@ -12,7 +11,7 @@ import {
     type Login,
     type Register
 } from "./auth.schema";
-import { useAppDispatch } from "../../store";
+import { useAppDispatch, useAppSelector, type RootState } from "../../store";
 import { closePopup } from "../../portals/popup.slice";
 
 type CombinedFormKeys = 'login' | 'password' | 'email';
@@ -20,6 +19,7 @@ type FormErrors = Partial<Record<CombinedFormKeys, string>>;
 
 export function AuthPopup() {
     const dispatch = useAppDispatch();
+
     const [isLoginMode, setIsLoginMode] = useState(true);
     const [logoutUser] = useLogoutUserMutation();
     const [loginData, setLoginData] = useState<Login>({ login: "", password: "" });
@@ -29,7 +29,9 @@ export function AuthPopup() {
 
     const [loginUser, { isLoading: isLoginLoading, error: loginError, isError: isLoginError }] = useLoginUserMutation();
     const [registerUser, { isLoading: isRegisterLoading, error: registerError, isError: isRegisterError }] = useRegisterUserMutation();
-    const { data: currentUser } = useGetUserQuery();
+
+    // const { data: currentUser } = useGetUserQuery();    
+    const currentUser = useAppSelector(state => state.auth.user);
 
     const formData = isLoginMode ? loginData : registerData;
     const setFormData = isLoginMode ? setLoginData : setRegister;

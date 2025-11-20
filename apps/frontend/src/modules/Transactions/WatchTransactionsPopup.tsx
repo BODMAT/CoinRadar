@@ -1,14 +1,13 @@
-import { useGetUserQuery } from "../Auth/auth.api";
-import { useDeleteWalletCoinTransactionMutation, useGetWalletQuery, type TransactionWithCoinId } from "./wallet.api";
+import { useDeleteWalletCoinTransactionMutation, useGetWalletQuery, type TransactionWithCoinId } from "./transaction.api";
 import EditSVG from "../../assets/edit.svg"
 import DeleteSVG from "../../assets/cross.svg"
 import { closePopup, openPopup } from "../../portals/popup.slice";
-import { useAppDispatch } from "../../store";
+import { useAppDispatch, useAppSelector } from "../../store";
 import { ChangeTransactionPopup } from "./ChangeTransactionPopup";
 
 export function WatchTransactionsPopup({ coinId }: { coinId?: string }) {
     const dispach = useAppDispatch();
-    const { data: user } = useGetUserQuery();
+    const user = useAppSelector(state => state.auth.user);
     const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
     const [deleteTransaction] = useDeleteWalletCoinTransactionMutation();
     if (!wallet) return null;

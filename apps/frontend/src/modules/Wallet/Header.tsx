@@ -1,12 +1,11 @@
-import { useGetUserQuery } from "../Auth/auth.api";
-import { useGetWalletQuery } from "./wallet.api";
+import { useGetWalletQuery } from "../Transactions/transaction.api";
 import { calcWalletBalanceWithCurrentPrice, calcWalletProfitLoss } from "../../utils/functions";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { openPopup } from "../../portals/popup.slice";
-import { ChooseCoinPopup } from "./ChooseCoinPopup";
-import { WatchTransactionsPopup } from "./WatchTransactionsPopup";
+import { ChooseCoinPopup } from "../Transactions/ChooseCoinPopup";
+import { WatchTransactionsPopup } from "../Transactions/WatchTransactionsPopup";
 export function Header() {
-    const { data: user } = useGetUserQuery();
+    const user = useAppSelector(state => state.auth.user);
     const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
     const { allCoins } = useAppSelector(state => state.allCrypto);
 
@@ -30,7 +29,7 @@ export function Header() {
     const PL = wallet ? Number(calcWalletProfitLoss(wallet, allCoins).toFixed(2)) : 0
 
     return (
-        <div className="flex justify-between max-md:flex-col items-center gap-7 bg-[image:var(--color-background)] rounded-2xl p-3">
+        <div className="flex justify-between max-md:flex-col items-center gap-7 bg-(image:--color-background) rounded-2xl p-3">
             <div className="flex gap-7 items-center">
                 <div className="flex gap-3 items-center max-[1000px]:flex-col">
                     <h1 className="fontTitle text-2xl">Wallet:</h1>
@@ -42,8 +41,8 @@ export function Header() {
                 </div>
             </div>
             <div className="flex gap-5 max-[420px]:flex-col">
-                <button onClick={handleOpenChooseCoinPopup} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-[var(--color-card)] cursor-pointer rounded transitioned hover:scale-105 text-[var:--color-text] border-[var:--color-text] border-2">Add transaction</button>
-                <button onClick={handleOpenWatchTransactionsPopup} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-[var(--color-card)] cursor-pointer rounded transitioned hover:scale-105 text-[var:--color-text] border-[var:--color-text] border-2">View transactions</button>
+                <button onClick={handleOpenChooseCoinPopup} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2">Add transaction</button>
+                <button onClick={handleOpenWatchTransactionsPopup} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2">View transactions</button>
             </div>
         </div>
     )

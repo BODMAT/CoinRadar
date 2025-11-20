@@ -1,11 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
-
-/* Fix for canvas Chart.js */
-canvas {
-  max-width: 100% !important;
-  max-height: 100% !important;
-}
 
 @custom-variant dark (&:where(.dark, .dark *));
 @layer base {

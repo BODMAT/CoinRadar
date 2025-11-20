@@ -1,46 +1,27 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { UserSchema, type AuthResponse, type Login, type Register, type UserSafe } from "./auth.schema";
+import type { RootState } from "../../store";
+import { setUserData, logout } from './auth.slice';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/";
+const STORAGE_KEY = import.meta.env.VITE_USER_STORAGE_KEY || "user-storage-coinradar";
 
 export const authApi = createApi({
     reducerPath: "authApi",
     baseQuery: fetchBaseQuery({
         baseUrl: BASE_URL,
-        prepareHeaders: (headers) => {
-            // prepareHeaders використовується для додавання заголовків до запитів
-            const stored = localStorage.getItem("user-storage-coinradar");
-            if (stored) {
-                try {
-                    const parsed = JSON.parse(stored);
-                    if (parsed && parsed.token) {
-                        headers.set("Authorization", `Bearer ${parsed.token}`);
-                    }
-                } catch (e) {
-                    console.error("Error parsing token", e);
-                }
+        prepareHeaders: (headers, { getState }) => {
+            const token = (getState() as RootState).auth.user?.token;
+            if (token) {
+                headers.set("Authorization", `Bearer ${token}`);
             }
             return headers;
         },
     }),
     tagTypes: ["User"],
     endpoints: (builder) => ({
-        getUser: builder.query<UserSafe | null, void>({
-            queryFn: async () => {
-                try {
-                    const stored = localStorage.getItem("user-storage-coinradar");
-                    if (!stored) return { data: null };
-                    const parsed = UserSchema.parse(JSON.parse(stored));
-                    return { data: parsed };
-                } catch {
-                    console.error("Помилка отримання користувача");
-                    return { data: null };
-                }
-            },
-            providesTags: [{ type: "User", id: "CURRENT" }],
-        }),
-
         //REGISTER USER
+
         registerUser: builder.mutation<AuthResponse, Register>({
             query: (credentials) => ({
                 url: "auth/register",
@@ -51,24 +32,17 @@ export const authApi = createApi({
                 try {
                     const { data: responseData } = await queryFulfilled;
                     const userData = responseData.user;
-                    const parsedUser = UserSchema.parse(userData);
-                    localStorage.setItem("user-storage-coinradar", JSON.stringify(parsedUser));
+                    const parsedUser: UserSafe = UserSchema.parse(userData);
 
-                    //! RTK MANUAL INVALIDATION
-                    dispatch(
-                        authApi.util.invalidateTags([{ type: "User", id: parsedUser.login }])
-                    );
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedUser));
 
-                    dispatch(
-                        authApi.util.updateQueryData('getUser', undefined, () => {
-                            return parsedUser;
-                        })
-                    );
+                    dispatch(setUserData(parsedUser));
+                    // dispatch(setWalletsList(parsedUser.wallets || [])); in future
                 } catch (error) {
                     console.error("Помилка реєстрації:", error);
                 }
             },
-            invalidatesTags: [], //! RTK MANUAL INVALIDATION
+            invalidatesTags: ['User'],
         }),
 
         //LOGIN USER
@@ -82,25 +56,17 @@ export const authApi = createApi({
                 try {
                     const { data: responseData } = await queryFulfilled;
                     const userData = responseData.user;
-
                     const parsedUser = UserSchema.parse(userData);
-                    localStorage.setItem("user-storage-coinradar", JSON.stringify(parsedUser));
 
-                    //! RTK MANUAL INVALIDATION
-                    dispatch(
-                        authApi.util.invalidateTags([{ type: "User", id: parsedUser.login }])
-                    );
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedUser));
 
-                    dispatch(
-                        authApi.util.updateQueryData('getUser', undefined, () => {
-                            return parsedUser;
-                        })
-                    );
+                    dispatch(setUserData(parsedUser));
+                    // dispatch(setWalletsList(parsedUser.wallets || [])); in future
                 } catch (error) {
                     console.error("Помилка входу:", error);
                 }
             },
-            invalidatesTags: [], //! RTK MANUAL INVALIDATION
+            invalidatesTags: ['User'],
         }),
 
         //LOGOUT USER
@@ -113,27 +79,21 @@ export const authApi = createApi({
             async onQueryStarted(_, { dispatch, queryFulfilled }) {
                 try {
                     await queryFulfilled;
-                    localStorage.removeItem("user-storage-coinradar");
+                    localStorage.removeItem(STORAGE_KEY);
 
-                    dispatch(
-                        authApi.util.updateQueryData('getUser', undefined, () => {
-                            return null;
-                        })
-                    );
+                    dispatch(logout());
+
+                    // dispatch(clearWalletState()); in future
+                    dispatch(authApi.util.resetApiState());
 
                 } catch (error) {
-                    localStorage.removeItem("user-storage-coinradar");
+                    localStorage.removeItem(STORAGE_KEY);
                     console.error("Помилка виходу (фейковий запит):", error);
-                    dispatch(
-                        authApi.util.updateQueryData('getUser', undefined, () => {
-                            return null;
-                        })
-                    );
                 }
             },
-            invalidatesTags: [], //! RTK MANUAL INVALIDATION
+            invalidatesTags: ['User'],
         }),
     }),
 });
 
-export const { useLogoutUserMutation, useGetUserQuery, useLoginUserMutation, useRegisterUserMutation } = authApi;
+export const { useLogoutUserMutation, useLoginUserMutation, useRegisterUserMutation } = authApi;

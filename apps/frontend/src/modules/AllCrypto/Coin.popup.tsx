@@ -1,6 +1,6 @@
 import { closePopup, openPopup } from "../../portals/popup.slice";
 import { useAppDispatch } from "../../store";
-import { AddTransactionPopup } from "../Wallet/AddTransactionPopup";
+import { AddTransactionPopup } from "../Transactions/AddTransactionPopup";
 import type { Coin } from "./all-crypto.api";
 import { Graph } from "./Graph";
 

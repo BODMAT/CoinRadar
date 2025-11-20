@@ -5,9 +5,17 @@ const prisma = require('../prisma');
 const z = require('zod');
 const { RegisterSchema, LoginSchema, UserSchema } = require('../models/AuthSchema');
 const { handleZodError } = require('../utils/helpers');
+import type { Prisma } from '@prisma/client';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const saltRounds = 10;
+
+type WalletListItem = Prisma.WalletGetPayload<{
+    select: {
+        id: true,
+        name: true,
+    }
+}>;
 
 exports.registerUser = async (req: Request, res: Response) => {
     try {
@@ -79,6 +87,19 @@ exports.loginUser = async (req: Request, res: Response) => {
 
         const user = await prisma.user.findFirst({
             where: { login },
+            include: {
+                wallets: {
+                    select: {
+                        id: true,
+                        name: true,
+                        // balance: true, in FUTURE
+                        // pnl: true
+                    },
+                    orderBy: {
+                        createdAt: 'asc',
+                    }
+                }
+            }
         });
 
         if (!user) {
@@ -104,7 +125,14 @@ exports.loginUser = async (req: Request, res: Response) => {
                 uid: user.id,
                 login: user.login,
                 email: user.email,
-                token: token
+                token: token,
+
+                wallets: user.wallets.map((wallet: WalletListItem) => ({
+                    id: wallet.id,
+                    name: wallet.name,
+                    // balance: true, in FUTURE
+                    // pnl: true
+                }))
             });
 
             res.json({

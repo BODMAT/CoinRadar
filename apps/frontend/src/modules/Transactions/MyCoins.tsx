@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Select from "react-select";
 import { useAppDispatch, useAppSelector } from "../../store";
 import type { Theme } from "../FixedFooter/theme.slice";
-import { useGetWalletQuery, type MyCoinComponent } from "./wallet.api";
-import { useGetUserQuery } from "../Auth/auth.api";
+import { useGetWalletQuery, type MyCoinComponent } from "./transaction.api";
 import { calcTransactionsProfitLoss, calculateAverageBuyingPrice } from "../../utils/functions";
 import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
 import { handleChangeSort, SortOptions, styles } from "../../utils/sorting.options";
@@ -14,7 +13,7 @@ import { WatchTransactionsPopup } from "./WatchTransactionsPopup";
 
 export function MyCoins() {
     const dispatch = useAppDispatch();
-    const { data: user } = useGetUserQuery();
+    const user = useAppSelector(state => state.auth.user);
     const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
     const { data: allCoins } = useGetAllCoinsQuery();
     const theme: Theme = useAppSelector((state) => state.theme.theme);

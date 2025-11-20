@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { useAppDispatch } from "../../store";
-import { useGetUserQuery } from "../Auth/auth.api";
-import { useGetWalletCoinQuery, useUpdateWalletCoinTransactionMutation, type Transaction, type TransactionWithCoinId } from "./wallet.api";
+import { useAppDispatch, useAppSelector } from "../../store";
+import { useGetWalletCoinQuery, useUpdateWalletCoinTransactionMutation, type Transaction, type TransactionWithCoinId } from "./transaction.api";
 import { closePopup, openPopup } from "../../portals/popup.slice";
 import { calculateAverageBuyingPrice } from "../../utils/functions";
 
 export function ChangeTransactionPopup({ transaction }: { transaction: TransactionWithCoinId }) {
     const dispach = useAppDispatch();
-    const { data: user } = useGetUserQuery();
+    const user = useAppSelector(state => state.auth.user);
     const { data: transactionFromQuery } = useGetWalletCoinQuery(
         { walletId: user?.uid!, coinId: transaction.coinId },
         { skip: !user?.uid }

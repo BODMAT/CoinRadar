@@ -2,12 +2,6 @@ const jwt = require('jsonwebtoken');
 import type { Request, Response, NextFunction } from 'express';
 import type { JwtPayload } from 'jsonwebtoken';
 
-// declare module 'express' {
-//     interface Request {
-//         userId?: string;
-//     }
-// }
-
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     throw new Error('FATAL ERROR: JWT_SECRET is not set in environment variables.');
