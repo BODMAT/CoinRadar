@@ -1,5 +1,5 @@
 import type { SingleValue } from "react-select";
-import type { MyCoinComponent } from "../modules/Wallet/wallet.api";
+import type { MyCoinComponent } from "../modules/Transactions/transaction.api";
 
 export const SortOptions = [
     { value: "sort", label: "Sort by" },
@@ -37,6 +37,7 @@ export const handleChangeSort = ({
 export const styles = (theme: "dark" | "light") => ({
     control: (base: any) => ({
         ...base,
+        cursor: "pointer",
         backgroundColor: "transparent",
         borderColor: theme === "dark" ? "#fff" : "#000",
         color: theme === "dark" ? "#fff" : "#000",
@@ -64,6 +65,7 @@ export const styles = (theme: "dark" | "light") => ({
                 ? "#222"
                 : "#fff",
         color: theme === "dark" ? "#fff" : "#000",
+        cursor: "pointer",
     }),
     dropdownIndicator: (base: any) => ({
         ...base,

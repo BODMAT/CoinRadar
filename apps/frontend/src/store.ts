@@ -9,6 +9,7 @@ import { allCryptoApi } from './modules/AllCrypto/all-crypto.api';
 import { walletApi } from './modules/Wallet/wallet.api';
 import { transactionApi } from './modules/Transactions/transaction.api';
 import authReducer from './modules/Auth/auth.slice';
+import selectedWalletReducer from './modules/Wallet/selectedWallet.slice';
 
 //! low coupling high cohesion (slicess + component)
 export const store = configureStore({
@@ -18,6 +19,7 @@ export const store = configureStore({
         scroll: scrollReducer,
         theme: themeReducer,
         popup: popupSlice,
+        selectedWallet: selectedWalletReducer,
 
         // practice trunks and async thunks
         allCrypto: allCryptoSlice,

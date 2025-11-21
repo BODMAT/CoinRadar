@@ -1,48 +1,70 @@
-import { useGetWalletQuery } from "../Transactions/transaction.api";
-import { calcWalletBalanceWithCurrentPrice, calcWalletProfitLoss } from "../../utils/functions";
-import { useAppDispatch, useAppSelector } from "../../store";
 import { openPopup } from "../../portals/popup.slice";
-import { ChooseCoinPopup } from "../Transactions/ChooseCoinPopup";
-import { WatchTransactionsPopup } from "../Transactions/WatchTransactionsPopup";
+import { useAppDispatch, useAppSelector } from "../../store";
+import { AddWalletPopup } from "./AddWalletPopup";
+import { WalletSelector } from "./WalletSelector";
+
+import { useGetWalletsQuery } from "../Wallet/wallet.api";
+import { UpdateWalletPopup } from "./UpdateWalletPopup";
+import { DeleteWalletPopup } from "./DeleteWalletPopup";
+
 export function Header() {
+    const dispatch = useAppDispatch();
     const user = useAppSelector(state => state.auth.user);
-    const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
-    const { allCoins } = useAppSelector(state => state.allCrypto);
+    const selectedWallet = useAppSelector(state => state.selectedWallet);
 
-    const dispach = useAppDispatch();
-    const handleOpenChooseCoinPopup = () => {
+    const { isFetching } = useGetWalletsQuery(undefined, {
+        skip: !user,
+    });
+
+    const handleAddWallet = () => {
         if (!user) {
-            dispach(openPopup({ title: "Failure", children: "You need to be logged in to add a transaction" }));
+            dispatch(openPopup({ title: "Failure", children: "You need to be logged in to add a wallet" }));
+            return
+        } else {
+            dispatch(openPopup({ title: "Add wallet", children: <AddWalletPopup /> }));
             return
         }
-        dispach(openPopup({ title: "Choose coin", children: <ChooseCoinPopup /> }));
     }
-
-    const handleOpenWatchTransactionsPopup = () => {
+    const handleDeleteCurrentWallet = () => {
         if (!user) {
-            dispach(openPopup({ title: "Failure", children: "You need to be logged in to watch transactions" }));
+            dispatch(openPopup({ title: "Failure", children: "You need to be logged in to delete a wallet" }));
             return
+        } else {
+            if (!selectedWallet) {
+                dispatch(openPopup({ title: "Delete wallet", children: "You need to select a wallet to delete" }));
+            } else {
+                dispatch(openPopup({ title: "Delete wallet", children: <DeleteWalletPopup /> }));
+            }
         }
-        dispach(openPopup({ title: "Transactions", children: <WatchTransactionsPopup /> }));
     }
 
-    const PL = wallet ? Number(calcWalletProfitLoss(wallet, allCoins).toFixed(2)) : 0
-
+    const handleUpdateCurrentWallet = () => {
+        if (!user) {
+            dispatch(openPopup({ title: "Failure", children: "You need to be logged in to update a wallet" }));
+            return
+        } else {
+            if (!selectedWallet) {
+                dispatch(openPopup({ title: "Update wallet", children: "You need to select a wallet to update" }));
+            } else {
+                dispatch(openPopup({ title: "Update wallet", children: <UpdateWalletPopup /> }));
+            }
+        }
+    }
     return (
         <div className="flex justify-between max-md:flex-col items-center gap-7 bg-(image:--color-background) rounded-2xl p-3">
-            <div className="flex gap-7 items-center">
-                <div className="flex gap-3 items-center max-[1000px]:flex-col">
-                    <h1 className="fontTitle text-2xl">Wallet:</h1>
-                    <h2 className="fontTitle text-2xl">${wallet ? calcWalletBalanceWithCurrentPrice(wallet, allCoins) : 0}</h2>
-                </div>
-                <div className="flex gap-3 items-center max-[1000px]:flex-col">
-                    <h1 className="fontTitle text-2xl">P&L (all time):</h1>
-                    <h2 className={`fontTitle text-2xl ${PL > 0 ? "text-green-500" : "text-red-500"}`}>${PL}</h2>
-                </div>
+            <div className="fontTitle text-2xl">
+                {!user && <h1 className="fontTitle text-2xl">Please log in to see your wallets</h1>}
+
+                {user && (
+                    isFetching ?
+                        <h1 className="fontTitle text-2xl">Loading wallets...</h1> :
+                        <WalletSelector />
+                )}
             </div>
             <div className="flex gap-5 max-[420px]:flex-col">
-                <button onClick={handleOpenChooseCoinPopup} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2">Add transaction</button>
-                <button onClick={handleOpenWatchTransactionsPopup} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2">View transactions</button>
+                <button disabled={!user} onClick={handleAddWallet} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2 disabled:cursor-not-allowed">Add new wallet</button>
+                <button disabled={!user} onClick={handleUpdateCurrentWallet} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2 disabled:cursor-not-allowed">Rename current wallet</button>
+                <button disabled={!user} onClick={handleDeleteCurrentWallet} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2 disabled:cursor-not-allowed">Delete current wallet</button>
             </div>
         </div>
     )

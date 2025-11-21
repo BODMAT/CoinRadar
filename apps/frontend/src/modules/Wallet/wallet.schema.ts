@@ -3,7 +3,7 @@ import { z } from "zod";
 export const WalletSchema = z.object({
     id: z.string().uuid("ID має бути UUID"),
     name: z.string().trim().min(1, 'Назва не може бути пустою').max(20, 'Назва має бути не більше 20 символів'),
-    createdAt: z.date(),
+    createdAt: z.coerce.date(),
     userId: z.string().uuid("ID має бути UUID"),
 })
 
@@ -22,3 +22,6 @@ export const WalletListItemResponseSchema = z.object({
 })
 
 export type WalletListItem = z.infer<typeof WalletListItemResponseSchema>;
+export type Wallet = z.infer<typeof WalletSchema>;
+export type WalletCreate = z.infer<typeof WalletCreateSchema>;
+export type WalletPatch = z.infer<typeof WalletPatchSchema>;

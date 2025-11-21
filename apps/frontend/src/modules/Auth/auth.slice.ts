@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import type { UserSafe } from './auth.schema';
+import type { RootState } from '../../store';
 
 const STORAGE_KEY = import.meta.env.VITE_USER_STORAGE_KEY || "user-storage-coinradar"; //! for rehydrate
 
@@ -39,5 +40,6 @@ const authSlice = createSlice({
 });
 
 export const { setUserData, logout } = authSlice.actions;
+export const selectCurrentUser = (state: RootState) => state.auth.user;
 
 export default authSlice.reducer;

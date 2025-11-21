@@ -2,6 +2,7 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { UserSchema, type AuthResponse, type Login, type Register, type UserSafe } from "./auth.schema";
 import type { RootState } from "../../store";
 import { setUserData, logout } from './auth.slice';
+import { clearWalletState, setWalletsList } from "../Wallet/selectedWallet.slice";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/";
 const STORAGE_KEY = import.meta.env.VITE_USER_STORAGE_KEY || "user-storage-coinradar";
@@ -37,7 +38,7 @@ export const authApi = createApi({
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedUser));
 
                     dispatch(setUserData(parsedUser));
-                    // dispatch(setWalletsList(parsedUser.wallets || [])); in future
+                    dispatch(setWalletsList(parsedUser.wallets || []));
                 } catch (error) {
                     console.error("Помилка реєстрації:", error);
                 }
@@ -61,7 +62,7 @@ export const authApi = createApi({
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedUser));
 
                     dispatch(setUserData(parsedUser));
-                    // dispatch(setWalletsList(parsedUser.wallets || [])); in future
+                    dispatch(setWalletsList(parsedUser.wallets || []));
                 } catch (error) {
                     console.error("Помилка входу:", error);
                 }
@@ -83,7 +84,7 @@ export const authApi = createApi({
 
                     dispatch(logout());
 
-                    // dispatch(clearWalletState()); in future
+                    dispatch(clearWalletState());
                     dispatch(authApi.util.resetApiState());
 
                 } catch (error) {
