@@ -34,6 +34,8 @@ const CreateTransactionDto = z.object({
     price: z.number().positive(),
     quantity: z.number().positive(),
     walletId: z.string().uuid().optional(),
+
+    date: z.coerce.date().optional(),
 });
 
 module.exports = {
