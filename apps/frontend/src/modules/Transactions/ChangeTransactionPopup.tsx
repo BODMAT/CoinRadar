@@ -1,197 +1,191 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { useGetWalletCoinQuery, useUpdateWalletCoinTransactionMutation, type Transaction, type TransactionWithCoinId } from "./transaction.api";
+import { useGetTransactionQuery, useUpdateTransactionMutation, useGetCoinStatsQuery } from "./transaction.api";
 import { closePopup, openPopup } from "../../portals/popup.slice";
-import { calculateAverageBuyingPrice } from "../../utils/functions";
+import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
 
-export function ChangeTransactionPopup({ transaction }: { transaction: TransactionWithCoinId }) {
-    const dispach = useAppDispatch();
-    const user = useAppSelector(state => state.auth.user);
-    const { data: transactionFromQuery } = useGetWalletCoinQuery(
-        { walletId: user?.uid!, coinId: transaction.coinId },
-        { skip: !user?.uid }
+export function ChangeTransactionPopup({ transactionId }: { transactionId: string }) {
+    const selectedWalletId = useAppSelector((state) => state.selectedWallet.selectedWalletId);
+    const dispatch = useAppDispatch();
+
+    const { data: transaction, isLoading } = useGetTransactionQuery(
+        { walletId: selectedWalletId || "", transactionId },
+        { skip: !selectedWalletId }
     );
-    const [changeTransaction] = useUpdateWalletCoinTransactionMutation();
-    const [stringifiedValues, setStringifiedValues] = useState({
-        quantity: transaction.quantity.toString(),
-        price: transaction.price.toString(),
-        total_price: (transaction.price * transaction.quantity).toString(),
-    });
-    const [form, setForm] = useState<Transaction>({
-        id: transaction.id,
-        coinInfo: {
-            symbol: transaction.coinInfo.symbol,
-            name: transaction.coinInfo.name,
-            image: transaction.coinInfo.image,
-            current_price: transaction.coinInfo.current_price,
-            price_change_percentage_24h: transaction.coinInfo.price_change_percentage_24h,
 
-        },
-        quantity: Number(stringifiedValues.quantity),
-        price: Number(stringifiedValues.price),
-        date: new Date(transaction.date).toISOString().split('T')[0],
-        buyOrSell: transaction.buyOrSell
-    });
+    const [updateTransaction, { isLoading: isUpdating }] = useUpdateTransactionMutation();
 
-    useEffect(() => {
-        setForm({
-            ...form,
-            quantity: Number(stringifiedValues.quantity),
-            price: Number(stringifiedValues.price),
-        })
-    }, [stringifiedValues]);
-
-    const regex = /^\d*\.?\d*$/;
-    const handleSubmit = async () => {
-        if (!user?.uid) return;
-        try {
-            await changeTransaction({
-                walletId: user?.uid ?? "",
-                transaction: form,
-                coinId: transaction.coinId
-            });
-            dispach(closePopup());
-            await new Promise((resolve) => setTimeout(resolve, 300));
-            dispach(openPopup({ title: "Success", children: "Transaction changed!" }));
-        } catch (error: any) {
-            dispach(openPopup({ title: "Failure", children: error.toString() }));
-        }
-    }
-
-    const handleChangeDate = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedDate = e.target.value; // "YYYY-MM-DD"
-        const today = new Date().toISOString().split('T')[0];
-        const isCorrectDate = selectedDate <= today;
-        if (!isCorrectDate) {
-            setAlert({ ...alert, date: "Date must be less than or equal to today's date." });
-        } else {
-            setAlert({ ...alert, date: "" });
-        }
-        setForm({
-            ...form,
-            date: selectedDate <= today ? selectedDate : form.date
-        });
-    };
-
-    const { data: transactionFromQueryCoin } = useGetWalletCoinQuery(
-        { walletId: user?.uid!, coinId: transaction.coinId },
-        { skip: !user?.uid }
+    const { data: coinStats } = useGetCoinStatsQuery(
+        { walletId: selectedWalletId || "", coinSymbol: transaction?.coinSymbol || "" },
+        { skip: !transaction || !selectedWalletId }
     );
-    const [alert, setAlert] = useState({
+
+    const { data: allCoins } = useGetAllCoinsQuery();
+    const coinApiData = allCoins?.find((c) => c.symbol.toLowerCase() === transaction?.coinSymbol.toLowerCase());
+
+    const [form, setForm] = useState({
         quantity: "",
+        price: "",
+        total_price: "",
         date: "",
-        buyOrSell: "",
+        buyOrSell: "buy" as "buy" | "sell"
     });
 
+    const [alert, setAlert] = useState<string | null>(null);
+
     useEffect(() => {
-        if (alert.quantity !== "") {
-            setTimeout(() => {
-                setAlert({ ...alert, quantity: "" });
-            }, 2000);
+        if (transaction) {
+            setForm({
+                quantity: transaction.quantity.toString(),
+                price: transaction.price.toString(),
+                total_price: (transaction.price * transaction.quantity).toString(),
+                date: new Date(transaction.date).toISOString().split('T')[0],
+                buyOrSell: transaction.buyOrSell
+            });
         }
-        if (alert.date !== "") {
-            setTimeout(() => {
-                setAlert({ ...alert, date: "" });
-            }, 2000);
-        }
-        if (alert.buyOrSell !== "") {
-            setTimeout(() => {
-                setAlert({ ...alert, buyOrSell: "" });
-            }, 2000);
-        }
-    }, [alert]);
+    }, [transaction]);
 
-    let currentCoinInWallet = transactionFromQueryCoin?.transactions.reduce((acc, transaction) => {
-        if (transaction.buyOrSell === "buy") {
-            return acc + transaction.quantity;
-        } else {
-            return acc - transaction.quantity;
-        }
-    }, 0) || 0;
-    currentCoinInWallet += transaction.buyOrSell === "sell" ? transaction.quantity : 0;
+    if (!selectedWalletId || isLoading || !transaction) return <div className="p-4 text-center">Loading...</div>;
 
-    const handleChangeQuantity = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        if (form.buyOrSell === "sell") {
-            if (Number(value) > currentCoinInWallet) {
-                setAlert({ ...alert, quantity: "You don't have enough coins in your wallet." });
-                return
-            } else {
-                setAlert({ ...alert, quantity: "" });
+    const currentCoinInWallet = coinStats?.totalQuantity || 0;
+    const availableToSell = currentCoinInWallet + (transaction.buyOrSell === 'sell' ? transaction.quantity : 0);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+
+        if ((name === 'quantity' || name === 'price' || name === 'total_price') && !/^\d*\.?\d*$/.test(value)) return;
+
+        setAlert(null);
+
+        let newForm = { ...form, [name]: value };
+
+        if (name === 'quantity') {
+            newForm.total_price = (Number(value) * Number(form.price)).toString();
+        } else if (name === 'price') {
+            newForm.total_price = (Number(form.quantity) * Number(value)).toString();
+        } else if (name === 'total_price') {
+            if (Number(form.price) > 0) {
+                newForm.quantity = (Number(value) / Number(form.price)).toString();
             }
         }
-        if (regex.test(value)) {
-            setStringifiedValues({ ...stringifiedValues, quantity: value, total_price: (Number(value) * Number(stringifiedValues.price)).toString() });
-        }
-    }
 
-    const handleChangeBuyOrSell = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const isAbletoSetSell = currentCoinInWallet >= form.quantity;
-        const value = e.target.value as "buy" | "sell";
-        if (value === "sell" && !isAbletoSetSell) {
-            setAlert({ ...alert, buyOrSell: "You don't have enough coins in your wallet." });
-            return
-        } else {
-            setAlert({ ...alert, buyOrSell: "" });
+        setForm(newForm);
+    };
+
+    const handleSubmit = async () => {
+        if (form.buyOrSell === 'sell' && Number(form.quantity) > availableToSell) {
+            setAlert("You don't have enough coins in your wallet.");
+            return;
         }
-        setForm({ ...form, buyOrSell: value });
-    }
+
+        try {
+            await updateTransaction({
+                walletId: selectedWalletId,
+                transactionId: transaction.id,
+                data: {
+                    quantity: Number(form.quantity),
+                    price: Number(form.price),
+                    date: new Date(form.date),
+                    buyOrSell: form.buyOrSell,
+                }
+            }).unwrap();
+
+            dispatch(closePopup());
+            setTimeout(() => {
+                dispatch(openPopup({ title: "Success", children: "Transaction updated!" }));
+            }, 300);
+
+        } catch (error: any) {
+            setAlert(error.data?.error || "Failed to update transaction");
+        }
+    };
+
     return (
-        <div className="flex flex-col gap-5">
-            <div className="flex justify-between gap-5 items-center mx-auto max-md:flex-col">
-                <img className="w-12 h-12" src={transaction.coinInfo.image} alt={transaction.coinInfo.name} />
-                <h2 className="font-bold text-xl">{transaction.coinInfo.name}</h2>
-                <div className="">
-                    <h3>Already in your wallet: {currentCoinInWallet}</h3>
-                    <h3>Quantity: {transactionFromQuery ? transactionFromQuery?.transactions.reduce((acc, transaction) => {
-                        if (transaction.buyOrSell === "buy") {
-                            return acc + transaction.quantity;
-                        } else {
-                            return acc - transaction.quantity;
-                        }
-                    }, 0) : 0}</h3>
-                    <h3>Your average buying price: {transactionFromQuery ? calculateAverageBuyingPrice(transactionFromQuery.transactions) : 0}</h3>
+        <div className="flex flex-col gap-5 p-2">
+            <div className="flex justify-between gap-5 items-center mx-auto max-md:flex-col border-b pb-4 w-full">
+                <div className="flex items-center gap-3">
+                    <img
+                        className="w-12 h-12 rounded-full"
+                        src={coinApiData?.image || "https://via.placeholder.com/50"}
+                        alt={transaction.coinSymbol}
+                    />
+                    <div>
+                        <h2 className="font-bold text-xl uppercase">{transaction.coinSymbol}</h2>
+                        {coinApiData && <p className="text-xs text-gray-500">Current: ${coinApiData.current_price}</p>}
+                    </div>
+                </div>
+                <div className="text-right text-sm">
+                    <p>Wallet Balance: <b>{currentCoinInWallet}</b></p>
+                    <p>Avg Buy: <b>${coinStats?.avgBuyingPrice}</b></p>
                 </div>
             </div>
-            <form className="flex flex-col gap-5 " onSubmit={(e) => { e.preventDefault(); handleSubmit() }}>
-                <div className="px-2 border-2 border-black rounded fontTitle">
-                    <label htmlFor="quantity">Quantity: </label>
-                    <input className="p-2 focus:outline-none focus:ring-0" type="string" placeholder="quantity..." name="quantity" id="quantity" value={stringifiedValues.quantity} onChange={(e) => {
-                        handleChangeQuantity(e);
-                    }} />
-                    {alert.quantity && <p className="text-red-500">{alert.quantity}</p>}
+
+            {alert && (
+                <div className="bg-red-100 text-red-700 p-2 rounded border border-red-200 text-sm text-center">
+                    {alert}
                 </div>
-                <div className="px-2 border-2 border-black rounded fontTitle">
-                    <label htmlFor="buying_price">{form.buyOrSell.slice(0, 1).toUpperCase() + form.buyOrSell.slice(1)} price: </label>
-                    <input className="p-2 focus:outline-none focus:ring-0" type="string" placeholder="buying price..." name="buying_price" id="buying_price" value={stringifiedValues.price} onChange={(e) => {
-                        const value = e.target.value;
-                        if (regex.test(value)) {
-                            setStringifiedValues({ ...stringifiedValues, price: value, total_price: (Number(value) * Number(stringifiedValues.quantity)).toString() });
-                        }
-                    }} />
+            )}
+
+            <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); handleSubmit() }}>
+
+                <div className="flex flex-col gap-1">
+                    <label className="text-sm font-bold">Type</label>
+                    <select
+                        name="buyOrSell"
+                        value={form.buyOrSell}
+                        onChange={handleChange}
+                        className={`p-2 border-2 rounded font-bold ${form.buyOrSell === "buy" ? "border-green-500 text-green-600" : "border-red-500 text-red-600"}`}
+                    >
+                        <option value="buy">Buy</option>
+                        <option value="sell">Sell</option>
+                    </select>
                 </div>
-                <div className="px-2 border-2 border-black rounded fontTitle">
-                    <label htmlFor="total_price">Total price: </label>
-                    <input className="p-2 focus:outline-none focus:ring-0" type="string" placeholder="total price..." name="total_price" id="total_price" value={stringifiedValues.total_price} onChange={(e) => {
-                        const value = e.target.value;
-                        if (regex.test(value)) {
-                            setStringifiedValues({ ...stringifiedValues, total_price: value, quantity: (Number(value) / Number(stringifiedValues.price)).toString() });
-                        }
-                    }} />
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-sm font-bold">Price</label>
+                        <input
+                            className="p-2 border-2 border-gray-300 rounded focus:border-blue-500 outline-none"
+                            type="text" name="price"
+                            value={form.price} onChange={handleChange}
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-sm font-bold">Quantity</label>
+                        <input
+                            className="p-2 border-2 border-gray-300 rounded focus:border-blue-500 outline-none"
+                            type="text" name="quantity"
+                            value={form.quantity} onChange={handleChange}
+                        />
+                    </div>
                 </div>
-                <div className="px-2 border-2 border-black rounded fontTitle">
-                    <label htmlFor="date">Date: </label>
-                    <input className="p-2 focus:outline-none focus:ring-0" type="date" placeholder="date..." name="date" id="date" value={form.date} onChange={(e) => {
-                        handleChangeDate(e);
-                    }} />
-                    {alert.date && <p className="text-red-500">{alert.date}</p>}
+
+                <div className="flex flex-col gap-1">
+                    <label className="text-sm font-bold">Total</label>
+                    <input
+                        className="p-2 border-2 border-gray-200 rounded"
+                        type="text" name="total_price"
+                        value={form.total_price} onChange={handleChange}
+                    />
                 </div>
-                <select value={form.buyOrSell} onChange={(e) => { handleChangeBuyOrSell(e) }} className={`px-2 border-2 border-black rounded fontTitle p-2 ${form.buyOrSell === "buy" ? "bg-green-500" : "bg-red-500"}`}>
-                    <option value="buy" className="bg-green-500">Buy</option>
-                    <option value="sell" className="bg-red-500">Sell</option>
-                </select>
-                {alert.buyOrSell && <p className="text-red-500">{alert.buyOrSell}</p>}
-                <button type="submit" disabled={!form.quantity} className="px-2 border-2 border-black rounded fontTitle p-2 bg-[var(--color-card)] cursor-pointer transitioned hover:scale-101 text-[var:--color-text]">{form.quantity ? "Change transaction" : "To change transaction you need to enter quantity"}</button>
+
+                <div className="flex flex-col gap-1">
+                    <label className="text-sm font-bold">Date</label>
+                    <input
+                        className="p-2 border-2 border-gray-300 rounded"
+                        type="date" name="date"
+                        value={form.date} onChange={handleChange}
+                        max={new Date().toISOString().split('T')[0]}
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={!form.quantity || isUpdating}
+                    className="mt-2 p-3 bg-black text-white rounded-lg font-bold hover:opacity-80 disabled:opacity-50 transition-all"
+                >
+                    {isUpdating ? "Saving..." : "Update Transaction"}
+                </button>
             </form>
         </div>
     )

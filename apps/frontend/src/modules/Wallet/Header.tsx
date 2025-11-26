@@ -61,7 +61,7 @@ export function Header() {
                         <WalletSelector />
                 )}
             </div>
-            <div className="flex gap-5 max-[420px]:flex-col">
+            <div className="flex gap-5 max-[520px]:flex-col">
                 <button disabled={!user} onClick={handleAddWallet} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2 disabled:cursor-not-allowed">Add new wallet</button>
                 <button disabled={!user} onClick={handleUpdateCurrentWallet} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2 disabled:cursor-not-allowed">Rename current wallet</button>
                 <button disabled={!user} onClick={handleDeleteCurrentWallet} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2 disabled:cursor-not-allowed">Delete current wallet</button>

@@ -1,4 +1,4 @@
-const z = require('zod');
+import { z } from "zod";
 
 const decimalSchema = z.union([z.string(), z.number(), z.any()])
     .transform((value: string | number | any) => Number(value));
@@ -46,8 +46,12 @@ const CreateTransactionDto = z.object({
         .optional(),
 });
 
-module.exports = {
-    CreateTransactionDto,
-    TransactionResponseSchema,
-    PaginatedTransactionsSchema
-};
+const TransactionResponseArraySchema = z.array(TransactionResponseSchema);
+
+
+type Transaction = z.infer<typeof TransactionResponseSchema>;
+type PaginatedTransactions = z.infer<typeof PaginatedTransactionsSchema>;
+type CreateTransaction = z.infer<typeof CreateTransactionDto>;
+
+export type { Transaction, PaginatedTransactions, CreateTransaction };
+export { TransactionResponseSchema, PaginatedTransactionsSchema, CreateTransactionDto, TransactionResponseArraySchema };

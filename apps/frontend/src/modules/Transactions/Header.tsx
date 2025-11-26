@@ -1,13 +1,9 @@
-import { useGetWalletQuery } from "./transaction.api";
-import { calcWalletBalanceWithCurrentPrice, calcWalletProfitLoss } from "../../utils/functions";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { openPopup } from "../../portals/popup.slice";
 import { ChooseCoinPopup } from "./ChooseCoinPopup";
 import { WatchTransactionsPopup } from "./WatchTransactionsPopup";
 export function Header() {
     const user = useAppSelector(state => state.auth.user);
-    const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
-    const { allCoins } = useAppSelector(state => state.allCrypto);
 
     const dispatch = useAppDispatch();
     const handleOpenChooseCoinPopup = () => {
@@ -26,14 +22,14 @@ export function Header() {
         dispatch(openPopup({ title: "Transactions", children: <WatchTransactionsPopup /> }));
     }
 
-    const PL = wallet ? Number(calcWalletProfitLoss(wallet, allCoins).toFixed(2)) : 0
+    const PL = 0
 
     return (
         <div className="flex justify-between max-md:flex-col items-center gap-7 bg-(image:--color-background) rounded-2xl p-3">
             <div className="flex gap-7 items-center">
                 <div className="flex gap-3 items-center max-[1000px]:flex-col">
                     <h1 className="fontTitle text-2xl">Wallet:</h1>
-                    <h2 className="fontTitle text-2xl">${wallet ? calcWalletBalanceWithCurrentPrice(wallet, allCoins) : 0}</h2>
+                    <h2 className="fontTitle text-2xl">$000</h2>
                 </div>
                 <div className="flex gap-3 items-center max-[1000px]:flex-col">
                     <h1 className="fontTitle text-2xl">P&L (all time):</h1>

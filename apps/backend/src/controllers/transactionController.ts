@@ -11,7 +11,7 @@ const {
 const { handleZodError } = require('../utils/helpers');
 
 const TransactionsArraySchema = z.array(TransactionResponseSchema);
-const { CoinInfoSchema } = require('../models/CoinInfo');
+const { CoinInfoSchema } = require('../models/CoinInfoSchema');
 
 type TransactionPayload = Prisma.TransactionsGetPayload<{}>;
 
@@ -352,6 +352,62 @@ exports.getTransactionsByCoin = async (req: Request, res: Response) => {
     } catch (error: any) {
         if (error instanceof z.ZodError) return handleZodError(res, error);
         console.error('Error fetching transactions by coin:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+// ======================================================================
+exports.getCoinStats = async (req: Request, res: Response) => {
+    try {
+        const { walletId, coinSymbol } = req.params;
+
+        if (!coinSymbol) {
+            return res.status(400).json({ error: "Coin symbol is required" });
+        }
+
+        const transactions = await prisma.transactions.findMany({
+            where: {
+                walletId,
+                coinSymbol: coinSymbol.toLowerCase()
+            },
+            orderBy: { date: 'asc' }
+        });
+
+        let currentQuantity = 0;
+        let totalBuyCost = 0;
+        let totalBuyQty = 0;
+
+        for (const tx of transactions) {
+            const price = Number(tx.price);
+            const quantity = Number(tx.quantity);
+            const total = price * quantity;
+
+            if (tx.buyOrSell === 'buy') {
+                totalBuyCost += total;
+                totalBuyQty += quantity;
+                currentQuantity += quantity;
+            } else {
+                currentQuantity -= quantity;
+            }
+        }
+
+        const avgPrice = totalBuyQty > 0
+            ? totalBuyCost / totalBuyQty
+            : 0;
+
+        const stats = {
+            coinSymbol: coinSymbol.toLowerCase(),
+            totalQuantity: Number(currentQuantity.toFixed(8)),
+            avgBuyingPrice: Number(avgPrice.toFixed(2))
+        };
+
+        const validatedStats = CoinInfoSchema.parse(stats);
+
+        return res.status(200).json(validatedStats);
+
+    } catch (error) {
+        if (error instanceof z.ZodError) return handleZodError(res, error);
+        console.error('Error getting coin stats:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 };

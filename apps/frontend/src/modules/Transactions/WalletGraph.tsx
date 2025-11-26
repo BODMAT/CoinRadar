@@ -16,21 +16,22 @@ import type { ChartOptions } from "chart.js";
 import { useAppSelector } from "../../store";
 import type { Theme } from "../FixedFooter/theme.slice";
 import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
-import { useGetWalletQuery } from "../Transactions/transaction.api";
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend, TimeScale, Filler);
 
 type Point = { x: number; y: number };
 
 export function WalletGraph() {
+    return null
+
     const theme: Theme = useAppSelector((state) => state.theme.theme);
     const user = useAppSelector(state => state.auth.user);
-    const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
+    // const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
     const { data: allCoins } = useGetAllCoinsQuery();
 
     //! this algorithm is not optimal, cause luck of CoinGecko API or its limits for free users
     const chartData: Point[] = useMemo(() => {
-        if (!wallet || !allCoins) return [];
+        // if (!wallet || !allCoins) return [];
 
         const result: Point[] = [];
 

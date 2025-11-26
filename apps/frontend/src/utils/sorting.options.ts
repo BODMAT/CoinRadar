@@ -1,37 +1,9 @@
-import type { SingleValue } from "react-select";
-import type { MyCoinComponent } from "../modules/Transactions/transaction.api";
-
 export const SortOptions = [
-    { value: "sort", label: "Sort by" },
+    { value: "sort", label: "Default sort" },
     { value: "total_price", label: "Total price" },
     { value: "quantity", label: "Quantity" },
-    { value: "date", label: "Date" },
     { value: "profit", label: "Profit" }
 ]
-
-export const handleChangeSort = ({
-    sortOption,
-    sortedCoins,
-    setSortedCoins,
-}: {
-    sortOption: SingleValue<{ value: string; label: string }>,
-    sortedCoins: MyCoinComponent[] | null,
-    setSortedCoins: React.Dispatch<React.SetStateAction<MyCoinComponent[] | null>>
-}) => {
-    if (!sortedCoins || sortOption?.value === "sort") return;
-
-    const coinsCopy = [...sortedCoins];
-
-    if (sortOption?.value === "total_price") {
-        setSortedCoins(coinsCopy.sort((a, b) => b.quantity * b.currentPrise - a.quantity * a.currentPrise));
-    } else if (sortOption?.value === "quantity") {
-        setSortedCoins(coinsCopy.sort((a, b) => b.quantity - a.quantity));
-    } else if (sortOption?.value === "date") {
-        setSortedCoins(coinsCopy.sort((a, b) => new Date(b.lastDate).getTime() - new Date(a.lastDate).getTime()));
-    } else if (sortOption?.value === "profit") {
-        setSortedCoins(coinsCopy.sort((a, b) => b.profit - a.profit));
-    }
-};
 
 
 export const styles = (theme: "dark" | "light") => ({

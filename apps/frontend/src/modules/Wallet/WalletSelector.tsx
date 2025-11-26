@@ -34,7 +34,7 @@ export function WalletSelector() {
     }
 
     return (
-        <div className="p-4 flex items-center gap-4 min-w-[300px]">
+        <div className="p-4 flex items-center gap-4 min-w-[200px] max-[400px]:flex-col">
             <label className="block text-2xl font-medium">
                 Choose a wallet:
             </label>

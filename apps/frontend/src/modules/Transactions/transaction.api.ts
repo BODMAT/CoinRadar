@@ -1,207 +1,156 @@
 import { createApi, fetchBaseQuery, } from "@reduxjs/toolkit/query/react";
-import { z } from "zod";
-import type { Coin } from "../AllCrypto/all-crypto.api";
-
-export interface Transaction {
-    id: string;
-    coinInfo: Omit<Coin, "sparkline_in_7d" | "other" | "ath" | "id">;
-
-    quantity: number;
-    price: number;
-    date: string;
-
-    buyOrSell: "buy" | "sell";
-}
-
-export interface TransactionWithCoinId extends Transaction {
-    coinId: string;
-}
-
-export interface CoinTransactions {
-    id: string;
-    transactions: Transaction[];
-}
-
-export interface MyCoinComponent {
-    id: string,
-    name: string,
-    image: string,
-    quantity: number,
-    currentPrise: number,
-    avverageByingPrice: number,
-    profit: number,
-    lastDate: string
-}
-
-export interface Wallet {
-    id: string;
-    coins: CoinTransactions[];
-}
-
-export const TransactionScheme = z.object({
-    id: z.string(),
-    coinInfo: z.object({
-        symbol: z.string(),
-        name: z.string(),
-        image: z.string(),
-        current_price: z.number().nonnegative(),
-        price_change_percentage_24h: z.number(),
-    }),
-
-    quantity: z.number().nonnegative(),
-    price: z.number().nonnegative(),
-    date: z.string().refine(val => !isNaN(Date.parse(val)), {
-        message: "Invalid date format",
-    }),
-    buyOrSell: z.enum(["buy", "sell"]),
-});
-
-export const CoinTransactionsScheme = z.object({
-    id: z.string(),
-    transactions: z.array(TransactionScheme),
-})
-
-export const WalletScheme = z.object({
-    id: z.string(),
-    coins: z.array(CoinTransactionsScheme),
-})
-
-const BASE_URL = "http://localhost:4000/api/v1/";
+import type { RootState } from "../../store";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/";
+import type { Transaction, PaginatedTransactions, CreateTransaction } from "./transaction.schema";
+import { PaginatedTransactionsSchema, TransactionResponseSchema, TransactionResponseArraySchema } from "./transaction.schema";
+import type { CoinInfo } from "./coinInfo.schema";
+import { CoinInfoArraySchema, CoinInfoSchema } from "./coinInfo.schema";
 
 export const transactionApi = createApi({
     reducerPath: "transactionApi",
-    // 3. Використовуємо fetchBaseQuery для REST API
     baseQuery: fetchBaseQuery({
         baseUrl: BASE_URL,
-        // Тут можна додати заголовок авторизації, коли він буде готовий
-        // prepareHeaders: (headers, { getState }) => {
-        //     const token = (getState() as RootState).auth.token; // Приклад
-        //     if (token) {
-        //         headers.set('authorization', `Bearer ${token}`);
-        //     }
-        //     return headers;
-        // },
+        prepareHeaders: (headers, { getState }) => {
+            const state = getState() as RootState;
+            const token = state.auth.user?.token;
+            if (token) {
+                headers.set('authorization', `Bearer ${token}`);
+            }
+            return headers;
+        },
     }),
-    tagTypes: ["Wallet", "WalletCoin", "WalletTransaction"],
+    tagTypes: ["Transaction"],
     endpoints: (builder) => ({
-        // -----------------------------------------------------------
-        // 1. GET WALLET (Отримання усіх монет та транзакцій)
-        // GET /wallets/{walletId}
-        // -----------------------------------------------------------
-        getWallet: builder.query<Wallet, string>({
-            query: (walletId: string) => `wallets/${walletId}`,
-            // ВАЛІДАЦІЯ ДАНИХ (використовуємо transformResponse)
+        getTransactions: builder.query<Transaction[], string>({
+            query: (walletId) => `wallets/${walletId}/transactions`,
+            providesTags: (result) =>
+                result
+                    ? [
+                        ...result.map(({ id }) => ({ type: 'Transaction' as const, id })),
+                        { type: 'Transaction', id: 'LIST' },
+                    ]
+                    : [{ type: 'Transaction', id: 'LIST' }],
             transformResponse: (response: unknown) => {
-                const parsedWallet = WalletScheme.parse(response);
-                return parsedWallet;
+                return TransactionResponseSchema.array().parse(response);
             },
-            providesTags: (_, __, walletId) => walletId ? [{ type: "Wallet", id: walletId }] : [],
         }),
 
-        // -----------------------------------------------------------
-        // 2. DELETE WALLET (Видалення всього гаманця)
-        // DELETE /wallets/{walletId}
-        // -----------------------------------------------------------
-        deleteWallet: builder.mutation<void, string>({
-            query: (walletId) => ({
-                url: `wallets/${walletId}`,
+        createTransaction: builder.mutation<Transaction, { walletId: string; data: CreateTransaction }>({
+            query: ({ walletId, data }) => ({
+                url: `wallets/${walletId}/transactions`,
+                method: "POST",
+                body: data,
+            }),
+            invalidatesTags: [{ type: 'Transaction', id: 'LIST' }],
+            transformResponse: (response: unknown) => {
+                return TransactionResponseSchema.parse(response);
+            },
+        }),
+
+        getPaginatedTransactions: builder.query<
+            PaginatedTransactions,
+            { walletId: string; page?: number; limit?: number }
+        >({
+            query: ({ walletId, page = 1, limit = 10 }) => ({
+                url: `wallets/${walletId}/transactions/paginated`,
+                params: { page, limit },
+            }),
+            providesTags: (result) =>
+                result
+                    ? [
+                        ...result.data.map(({ id }) => ({ type: 'Transaction' as const, id })),
+                        { type: 'Transaction', id: 'LIST' },
+                    ]
+                    : [{ type: 'Transaction', id: 'LIST' }],
+            transformResponse: (response: unknown) => {
+                return PaginatedTransactionsSchema.parse(response);
+            },
+        }),
+
+        getTransaction: builder.query<Transaction, { walletId: string; transactionId: string }>({
+            query: ({ walletId, transactionId }) => `wallets/${walletId}/transactions/${transactionId}`,
+
+            providesTags: (result) =>
+                result
+                    ? [
+                        { type: 'Transaction' as const, id: result.id },
+                        { type: 'Transaction' as const, id: 'LIST' },
+                    ]
+                    : [{ type: 'Transaction' as const, id: 'LIST' }],
+            transformResponse: (response: unknown) => {
+                return TransactionResponseSchema.parse(response);
+            },
+        }),
+
+        deleteTransaction: builder.mutation<{ message: string; id: string }, { walletId: string; transactionId: string }>({
+            query: ({ walletId, transactionId }) => ({
+                url: `wallets/${walletId}/transactions/${transactionId}`,
                 method: "DELETE",
             }),
-            invalidatesTags: (_, __, walletId) => walletId ? [{ type: "Wallet", id: walletId }] : [],
-        }),
-
-        // -----------------------------------------------------------
-        // 3. GET WALLET COIN (Отримання транзакцій для конкретної монети)
-        // GET /wallets/{walletId}/coins/{coinId}
-        // -----------------------------------------------------------
-        getWalletCoin: builder.query<CoinTransactions, { coinId: string; walletId: string }>({
-            query: ({ coinId, walletId }) => `wallets/${walletId}/coins/${coinId}`,
-            providesTags: (_, __, { coinId, walletId }) => [
-                { type: "WalletCoin", id: `${walletId}-${coinId}` }
+            invalidatesTags: (result, error, { transactionId }) => [
+                { type: 'Transaction', id: transactionId },
+                { type: 'Transaction', id: 'LIST' }
             ],
         }),
 
-        // -----------------------------------------------------------
-        // 4. DELETE WALLET COIN (Видалення монети та всіх її транзакцій)
-        // DELETE /wallets/{walletId}/coins/{coinId}
-        // -----------------------------------------------------------
-        deleteWalletCoin: builder.mutation<void, { coinId: string, walletId: string }>({
-            query: ({ coinId, walletId }) => ({
-                url: `wallets/${walletId}/coins/${coinId}`,
-                method: "DELETE",
+        updateTransaction: builder.mutation<
+            Transaction,
+            { walletId: string; transactionId: string; data: Partial<CreateTransaction> }
+        >({
+            query: ({ walletId, transactionId, data }) => ({
+                url: `wallets/${walletId}/transactions/${transactionId}`,
+                method: "PATCH",
+                body: data,
             }),
-            invalidatesTags: (_, __, { coinId, walletId }) => walletId ? [
-                { type: "Wallet", id: walletId },
-                { type: "WalletCoin", id: `${walletId}-${coinId}` }
-            ] : [],
-        }),
-
-        // -----------------------------------------------------------
-        // 5. GET TRANSACTION (Отримання конкретної транзакції)
-        // GET /wallets/{walletId}/coins/{coinId}/transactions/{transactionId}
-        // -----------------------------------------------------------
-        getWalletCoinTransaction: builder.query<Transaction, { transactionId: string, coinId: string, walletId: string }>({
-            query: ({ transactionId, coinId, walletId }) =>
-                `wallets/${walletId}/coins/${coinId}/transactions/${transactionId}`,
-            providesTags: (_, __, { transactionId, coinId, walletId }) =>
-                walletId ? [
-                    { type: "Wallet", id: walletId },
-                    { type: "WalletTransaction", id: `${walletId}-${coinId}-${transactionId}` },
-                    { type: "WalletCoin", id: `${walletId}-${coinId}` }
-                ] : [],
-        }),
-
-        // -----------------------------------------------------------
-        // 6. ADD TRANSACTION (Додавання нової транзакції)
-        // POST /wallets/{walletId}/coins/{coinId}/transactions
-        // -----------------------------------------------------------
-        addWalletCoinTransaction: builder.mutation<Transaction, { transaction: Transaction, coinId: string, walletId: string }>(
-            {
-                query: ({ transaction, coinId, walletId }) => ({
-                    url: `wallets/${walletId}/coins/${coinId}/transactions`,
-                    method: "POST",
-                    body: transaction,
-                }),
-                invalidatesTags: (_, __, { walletId, coinId }) => [ // Ігноруємо тег для конкретної транзакції, оскільки бекенд поверне ID
-                    { type: "Wallet", id: walletId },
-                    { type: "WalletCoin", id: `${walletId}-${coinId}` },
-                ],
-            }),
-
-        // -----------------------------------------------------------
-        // 7. UPDATE TRANSACTION (Оновлення існуючої транзакції)
-        // PUT /wallets/{walletId}/coins/{coinId}/transactions/{transactionId}
-        // -----------------------------------------------------------
-        updateWalletCoinTransaction: builder.mutation<Transaction, { transaction: Transaction, coinId: string, walletId: string }>({
-            query: ({ transaction, coinId, walletId }) => ({
-                url: `wallets/${walletId}/coins/${coinId}/transactions/${transaction.id}`,
-                method: "PUT",
-                body: transaction,
-            }),
-            invalidatesTags: (_, __, { walletId, coinId, transaction }) => [
-                { type: "Wallet", id: walletId },
-                { type: "WalletCoin", id: `${walletId}-${coinId}` },
-                { type: "WalletTransaction", id: `${walletId}-${coinId}-${transaction.id}` },
+            invalidatesTags: (result, error, { transactionId }) => [
+                { type: 'Transaction', id: transactionId },
+                { type: 'Transaction', id: 'LIST' }
             ],
+            transformResponse: (response: unknown) => {
+                return TransactionResponseSchema.parse(response);
+            },
         }),
 
-        // -----------------------------------------------------------
-        // 8. DELETE TRANSACTION (Видалення транзакції)
-        // DELETE /wallets/{walletId}/coins/{coinId}/transactions/{transactionId}
-        // -----------------------------------------------------------
-        deleteWalletCoinTransaction: builder.mutation<void, { transactionId: string, coinId: string, walletId: string }>({
-            query: ({ transactionId, coinId, walletId }) => ({
-                url: `wallets/${walletId}/coins/${coinId}/transactions/${transactionId}`,
-                method: "DELETE",
-            }),
-            invalidatesTags: (_, __, { walletId, coinId, transactionId }) => [
-                { type: "Wallet", id: walletId },
-                { type: "WalletCoin", id: `${walletId}-${coinId}` },
-                { type: "WalletTransaction", id: `${walletId}-${coinId}-${transactionId}` },
-            ],
+        getTransactionsByCoin: builder.query<Transaction[], { walletId: string; coinSymbol: string }>({
+            query: ({ walletId, coinSymbol }) => `wallets/${walletId}/transactions/coins/${coinSymbol}`,
+            providesTags: (result) =>
+                result
+                    ? [
+                        ...result.map(({ id }) => ({ type: 'Transaction' as const, id })),
+                        { type: 'Transaction', id: 'LIST' }
+                    ]
+                    : [{ type: 'Transaction', id: 'LIST' }],
+            transformResponse: (response: unknown) => {
+                return TransactionResponseArraySchema.parse(response);
+            },
         }),
 
+        getAllTransactionsGroupByCoinSymbol: builder.query<CoinInfo[], string>({
+            query: (walletId) => `wallets/${walletId}/transactions/grouped`,
+            providesTags: [{ type: 'Transaction', id: 'LIST' }],
+            transformResponse: (response: unknown) => {
+                return CoinInfoArraySchema.parse(response);
+            },
+        }),
+
+        getCoinStats: builder.query<CoinInfo, { walletId: string; coinSymbol: string }>({
+            query: ({ walletId, coinSymbol }) => `wallets/${walletId}/transactions/coins/${coinSymbol}/stats`,
+            providesTags: [{ type: 'Transaction', id: 'LIST' }],
+            transformResponse: (response: unknown) => {
+                return CoinInfoSchema.parse(response);
+            },
+        }),
     }),
 });
 
-export const { useGetWalletQuery, useDeleteWalletMutation, useGetWalletCoinQuery, useDeleteWalletCoinMutation, useGetWalletCoinTransactionQuery, useAddWalletCoinTransactionMutation, useUpdateWalletCoinTransactionMutation, useDeleteWalletCoinTransactionMutation } = transactionApi;
+export const {
+    useGetTransactionsQuery,
+    useCreateTransactionMutation,
+    useGetPaginatedTransactionsQuery,
+    useGetTransactionQuery,
+    useDeleteTransactionMutation,
+    useUpdateTransactionMutation,
+    useGetTransactionsByCoinQuery,
+    useGetAllTransactionsGroupByCoinSymbolQuery,
+    useGetCoinStatsQuery
+} = transactionApi;
