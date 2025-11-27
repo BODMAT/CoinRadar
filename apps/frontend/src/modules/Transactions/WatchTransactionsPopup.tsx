@@ -17,7 +17,6 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
 
     const isSpecificCoin = !!coinSymbol;
 
-    // 1. Запити
     const {
         data: allTransactionsData,
         isLoading: isLoadingAll,
@@ -40,11 +39,8 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
     const rawTransactions = isSpecificCoin ? coinTransactionsData : allTransactionsData?.data;
     const meta = allTransactionsData?.meta;
 
-    // 2. Визначаємо, чи йде завантаження (перше або нової сторінки)
-    // isFetchingAll - true, коли ми перемкнули сторінку і чекаємо дані
     const isPageLoading = isSpecificCoin ? isLoadingCoin : (isLoadingAll || isFetchingAll);
 
-    // 3. Маппінг даних (додаємо картинки)
     const transactionsToShow = useMemo(() => {
         if (!rawTransactions) return [];
         return rawTransactions.map((transaction) => {
@@ -57,7 +53,6 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
         });
     }, [rawTransactions, allCoins]);
 
-    // 4. Масив для скелетонів (стільки ж, скільки limit)
     const skeletons = Array(limit).fill(0);
 
     const handleDeleteTransaction = async (transactionId: string) => {
@@ -77,7 +72,6 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
 
     return (
         <>
-            {/* HEADER (Статичний, без кнопок сортування) */}
             <div className="grid grid-cols-7 max-[560px]:grid-cols-6 max-[460px]:grid-cols-5 gap-1 max-md:gap-px p-4 m-1 text-center items-center content-center text-[15px] max-md:text-[12px] max-[460px]:text-[10px]!">
                 <div className="font-bold">Coin</div>
                 <div className="font-bold max-[460px]:hidden">Action</div>
@@ -88,10 +82,8 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
                 <div className="font-bold">Delete</div>
             </div>
 
-            {/* BODY */}
             <div>
                 {isPageLoading ? (
-                    // --- SKELETONS (Показуємо під час завантаження) ---
                     skeletons.map((_, index) => (
                         <div key={index} className="grid grid-cols-7 max-[560px]:grid-cols-6 max-[460px]:grid-cols-5 gap-1 p-4 m-1 border-b border-gray-200 rounded-xl animate-pulse">
                             <div className="flex gap-2 items-center mx-auto">
@@ -107,7 +99,6 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
                         </div>
                     ))
                 ) : (
-                    // --- REAL DATA ---
                     transactionsToShow.map(transaction => (
                         <div key={transaction.id} className={`text-[15px] text-center max-md:text-[12px] grid grid-cols-7 max-[560px]:grid-cols-6 max-[460px]:grid-cols-5 items-center content-center gap-1 max-md:gap-px p-4 m-1 border-b border-gray-300 rounded-xl ${transaction.buyOrSell === "buy" ? "bg-green-400/20" : "bg-red-400/20"}`}>
                             <div className="flex gap-2 items-center mx-auto">
@@ -135,7 +126,6 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
                 )}
             </div>
 
-            {/* PAGINATION */}
             {!isSpecificCoin && meta && meta.total > 0 && (
                 <div className="flex justify-between items-center mt-4 px-2 pt-2 border-t border-gray-200">
                     <button

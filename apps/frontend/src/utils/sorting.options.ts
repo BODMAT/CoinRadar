@@ -15,6 +15,8 @@ export const styles = (theme: "dark" | "light") => ({
         color: theme === "dark" ? "#fff" : "#000",
         boxShadow: "none",
         outline: "none",
+        minWidth: "200px",
+        maxWidth: "310px",
         "&:hover": {
             borderColor: theme === "dark" ? "#aaa" : "#333",
         },

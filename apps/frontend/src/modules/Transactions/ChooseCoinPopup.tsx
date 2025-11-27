@@ -1,12 +1,18 @@
 import { useEffect, useState } from "react";
-import { useAppDispatch, useAppSelector } from "../../store"
-import type { Coin } from "../AllCrypto/all-crypto.api";
+import { useAppDispatch } from "../../store"
+import type { Coin } from "../AllCrypto/all-crypto.schema";
 import { closePopup, openPopup } from "../../portals/popup.slice";
 import { AddTransactionPopup } from "./AddTransactionPopup";
+import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
 
 export function ChooseCoinPopup() {
     const [inputValue, setInputValue] = useState('');
-    const { allCoins } = useAppSelector((state) => state.allCrypto);
+    const {
+        data: allCoins
+    } = useGetAllCoinsQuery();
+
+    if (!allCoins) return null;
+
     const [localFilteredCoins, setLocalFilteredCoins] = useState<Coin[]>(allCoins);
     const dispach = useAppDispatch();
 

@@ -18,10 +18,11 @@ const selectedWalletSlice = createSlice({
 
         setWalletsList(state, action: PayloadAction<WalletListItem[]>) {
             state.walletsList = action.payload;
+            const currentStillExists = action.payload.find(w => w.id === state.selectedWalletId);
 
-            state.selectedWalletId = action.payload.length > 0
-                ? action.payload[0].id
-                : null;
+            if (!state.selectedWalletId || !currentStillExists) {
+                state.selectedWalletId = action.payload.length > 0 ? action.payload[0].id : null;
+            }
         },
 
         selectWallet(state, action: PayloadAction<string>) {

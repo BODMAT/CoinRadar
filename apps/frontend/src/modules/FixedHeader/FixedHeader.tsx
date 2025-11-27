@@ -41,8 +41,8 @@ export function FixedHeader() {
     }
 
     return (
-        <header className="relative z-[100]">
-            <div className="fixed w-full h-[80px] bg-[image:var(--color-fixed)]">
+        <header className="relative z-100">
+            <div className="fixed w-full h-20 bg-(image:--color-fixed)">
                 <div className="myContainer flex justify-between gap-4 items-center h-full">
                     <a href="./" className="logo transitioned hover:scale-105 flex items-center gap-2">
                         <img className="w-[50px] h-[50px]" src="./logo.png" alt="logo" />
@@ -52,13 +52,13 @@ export function FixedHeader() {
                     {!isMobile ? (
                         <div className="flex gap-10 items-center">{renderMenuButtons()}</div>
                     ) : (
-                        <button onClick={toggleBurger} className="group w-[36px] rounded-lg border-0 cursor-pointer">
+                        <button onClick={toggleBurger} className="group w-9 rounded-lg border-0 cursor-pointer">
                             <div className="grid justify-items-center gap-1.5">
                                 {["rotate-45 translate-y-2.5", "scale-x-0", "-rotate-45 -translate-y-2.5"].map(
                                     (cls, i) => (
                                         <span
                                             key={i}
-                                            className={`h-1 w-9 bg-[var(--color-text)] rounded-full transition-all duration-500 ${isBurgerOpen ? cls : ""
+                                            className={`h-1 w-9 bg-(--color-text) rounded-full transition-all duration-500 ${isBurgerOpen ? cls : ""
                                                 }`}
                                         ></span>
                                     )
@@ -68,7 +68,7 @@ export function FixedHeader() {
                     )}
 
                     <div
-                        className={`fixed top-[80px] left-0 h-[calc(100vh-80px)] w-full z-50 transition-transform transitioned bg-black/75 text-white ${isBurgerOpen ? "translate-x-0" : "-translate-x-full"
+                        className={`fixed top-20 left-0 h-[calc(100vh-80px)] w-full z-50 transition-transform transitioned bg-black/75 text-white ${isBurgerOpen ? "translate-x-0" : "-translate-x-full"
                             }`}
                     >
                         <div className="flex flex-col items-center justify-center gap-20 py-15 text-3xl">

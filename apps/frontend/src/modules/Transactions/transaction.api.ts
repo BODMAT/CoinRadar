@@ -5,6 +5,7 @@ import type { Transaction, PaginatedTransactions, CreateTransaction } from "./tr
 import { PaginatedTransactionsSchema, TransactionResponseSchema, TransactionResponseArraySchema } from "./transaction.schema";
 import type { CoinInfo } from "./coinInfo.schema";
 import { CoinInfoArraySchema, CoinInfoSchema } from "./coinInfo.schema";
+import { walletApi } from "../Wallet/wallet.api";
 
 export const transactionApi = createApi({
     reducerPath: "transactionApi",
@@ -45,6 +46,12 @@ export const transactionApi = createApi({
             transformResponse: (response: unknown) => {
                 return TransactionResponseSchema.parse(response);
             },
+            onQueryStarted: async (_, { dispatch, queryFulfilled }) => {
+                try {
+                    await queryFulfilled;
+                    dispatch(walletApi.util.invalidateTags(['Wallet']));
+                } catch { }
+            }
         }),
 
         getPaginatedTransactions: builder.query<
@@ -91,6 +98,12 @@ export const transactionApi = createApi({
                 { type: 'Transaction', id: transactionId },
                 { type: 'Transaction', id: 'LIST' }
             ],
+            onQueryStarted: async (_, { dispatch, queryFulfilled }) => {
+                try {
+                    await queryFulfilled;
+                    dispatch(walletApi.util.invalidateTags(['Wallet']));
+                } catch { }
+            }
         }),
 
         updateTransaction: builder.mutation<
@@ -109,6 +122,12 @@ export const transactionApi = createApi({
             transformResponse: (response: unknown) => {
                 return TransactionResponseSchema.parse(response);
             },
+            onQueryStarted: async (_, { dispatch, queryFulfilled }) => {
+                try {
+                    await queryFulfilled;
+                    dispatch(walletApi.util.invalidateTags(['Wallet']));
+                } catch { }
+            }
         }),
 
         getTransactionsByCoin: builder.query<Transaction[], { walletId: string; coinSymbol: string }>({

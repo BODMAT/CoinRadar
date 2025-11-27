@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 const prisma = require('../prisma');
 const z = require('zod');
 const { WalletSchema, WalletCreateSchema, WalletPatchSchema } = require('../models/WalletSchema');
-const { handleZodError } = require('../utils/helpers');
+const { handleZodError, calculateWalletStats } = require('../utils/helpers');
 
 const WalletsArraySchema = z.array(WalletSchema);
 
@@ -18,9 +18,29 @@ exports.getWallets = async (req: Request, res: Response) => {
             where: {
                 userId: userId,
             },
-            //! include: { transactions: true } 
+            include: {
+                transactions: {
+                    select: {
+                        price: true,
+                        quantity: true,
+                        buyOrSell: true,
+                        coinSymbol: true
+                    },
+                    orderBy: { date: 'desc' }
+                }
+            }
         });
-        const validatedWallets = WalletsArraySchema.parse(wallets);
+        const walletsWithStats = wallets.map((wallet: any) => {
+            const { invested, realized } = calculateWalletStats(wallet.transactions);
+            const { transactions, ...walletData } = wallet;
+
+            return {
+                ...walletData,
+                totalInvested: invested,
+                totalRealizedPnL: realized
+            };
+        });
+        const validatedWallets = WalletsArraySchema.parse(walletsWithStats);
         return res.status(200).json(validatedWallets);
 
     } catch (error: any) {
@@ -96,14 +116,33 @@ exports.getWallet = async (req: Request, res: Response) => {
                 id: walletId,
                 userId: userId,
             },
-            //! include: { transactions: true }
+            include: {
+                transactions: {
+                    select: {
+                        price: true,
+                        quantity: true,
+                        buyOrSell: true,
+                        coinSymbol: true
+                    },
+                    orderBy: { date: 'desc' }
+                }
+            }
         });
 
         if (!wallet) {
             return res.status(404).json({ error: 'Wallet not found' });
         }
 
-        const validatedWallet = WalletSchema.parse(wallet);
+        const { invested, realized } = calculateWalletStats(wallet.transactions);
+        const { transactions, ...walletData } = wallet;
+
+        const responseData = {
+            ...walletData,
+            totalInvested: invested,
+            totalRealizedPnL: realized
+        };
+
+        const validatedWallet = WalletSchema.parse(responseData);
         return res.status(200).json(validatedWallet);
 
     } catch (error: any) {
@@ -198,3 +237,4 @@ exports.deleteWallet = async (req: Request, res: Response) => {
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+

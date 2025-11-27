@@ -6,8 +6,9 @@ const WalletSchema = z.object({
     createdAt: z.date(),
     userId: z.string().uuid("ID має бути UUID"),
 
-    //! transactions in future ANY
-    transactions: z.array(z.any()).optional(),
+    //! transactions: z.array(TransactionResponseSchema).optional(),
+    totalInvested: z.number().optional().default(0),
+    totalRealizedPnL: z.number().optional().default(0),
 })
 
 const WalletCreateSchema = z.object({

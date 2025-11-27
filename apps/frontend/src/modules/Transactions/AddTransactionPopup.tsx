@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import type { Coin } from "../AllCrypto/all-crypto.api";
+import type { Coin } from "../AllCrypto/all-crypto.schema";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closePopup, openPopup } from "../../portals/popup.slice";
 import { useCreateTransactionMutation, useGetCoinStatsQuery } from "./transaction.api";

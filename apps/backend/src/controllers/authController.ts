@@ -92,8 +92,6 @@ exports.loginUser = async (req: Request, res: Response) => {
                     select: {
                         id: true,
                         name: true,
-                        // balance: true, in FUTURE
-                        // pnl: true
                     },
                     orderBy: {
                         createdAt: 'asc',
@@ -130,8 +128,6 @@ exports.loginUser = async (req: Request, res: Response) => {
                 wallets: user.wallets.map((wallet: WalletListItem) => ({
                     id: wallet.id,
                     name: wallet.name,
-                    // balance: true, in FUTURE
-                    // pnl: true
                 }))
             });
 

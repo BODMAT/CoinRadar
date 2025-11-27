@@ -23,7 +23,7 @@ export function HomePage() {
                             key={index}
                             variants={blockFromLeftAnimation}
                             custom={index}
-                            className="transitioned relative mb-3 p-4 rounded-2xl bg-[var(--color-card)] text-white 
+                            className="transitioned relative mb-3 p-4 rounded-2xl bg-(--color-card) text-white 
                        first:font-black first:text-3xl
                        shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-[0_15px_35px_rgba(0,0,0,0.4)]
                        hover:scale-[1.02] transitioned

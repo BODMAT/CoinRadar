@@ -5,9 +5,7 @@ import { FixedFooter } from "../FixedFooter/FixedFooter";
 import { FixedHeader } from "../FixedHeader/FixedHeader";
 import { HomePage } from "../HomePage/HomePage";
 import { AllCrypto } from "../AllCrypto/AllCrypto";
-import { fetchAllCoinsThunk } from "../AllCrypto/all-crypto.thunk";
-import { lazy, Suspense, useEffect } from "react";
-import { useAppDispatch } from "../../store";
+import { lazy, Suspense } from "react";
 import { useOnScreen } from "../../hooks/useOnScreen";
 
 const Wallet = lazy(() =>
@@ -15,14 +13,9 @@ const Wallet = lazy(() =>
     default: module.Wallet,
   }))
 );
+
 export function App() {
   useApplyTheme();
-
-  const dispatch = useAppDispatch();
-  useEffect(() => {
-    dispatch(fetchAllCoinsThunk());
-  }, [dispatch]);
-
   const [ref, isVisible] = useOnScreen<HTMLDivElement>("200px");
   return (
     <div className="relative">

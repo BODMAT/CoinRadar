@@ -1,64 +1,88 @@
 import { useEffect, useState } from "react";
-import SearchSVG from "../../assets/search.svg";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { setPage, filterCoins } from "./all-crypto.slice";
-import { openPopup } from "../../portals/popup.slice";
-import type { Coin } from "./all-crypto.api";
-import { CoinPopup } from "./Coin.popup";
-export function CryptoMenu() {
+import { setPage, setSearchQuery } from "./all-crypto.slice";
+import SearchSVG from "../../assets/search.svg";
+
+export function CryptoMenu({ totalFilteredCount }: { totalFilteredCount: number }) {
     const dispatch = useAppDispatch();
-    const { page, filteredCoins, allCoins, perPage } = useAppSelector(state => state.allCrypto);
-    const [inputValue, setInputValue] = useState('');
+    const { page, perPage, lastUpdate } = useAppSelector(state => state.allCrypto);
+    const currentSearchQuery = useAppSelector(state => state.allCrypto.searchQuery);
+
+    const [inputValue, setInputValue] = useState(currentSearchQuery);
+
+    const [ago, setAgo] = useState(0);
+    useEffect(() => {
+        if (!lastUpdate) return;
+
+        const updateAgo = () => {
+            const lastUpdateTime = new Date(lastUpdate).getTime();
+            const seconds = Math.floor((Date.now() - lastUpdateTime) / 1000);
+            setAgo(seconds);
+        };
+
+        updateAgo();
+        const interval = setInterval(updateAgo, 1000);
+
+        return () => clearInterval(interval);
+    }, [lastUpdate]);
 
     useEffect(() => {
-        if (allCoins.length === 0) return;
+        const timeoutId = setTimeout(() => {
+            if (inputValue !== currentSearchQuery) {
+                dispatch(setSearchQuery(inputValue));
+                dispatch(setPage(1));
+            }
+        }, 300);
 
-        dispatch(filterCoins(inputValue));
-    }, [inputValue, allCoins, dispatch]);
+        return () => clearTimeout(timeoutId);
+    }, [inputValue, dispatch, currentSearchQuery]);
 
-    const handleOpenPopup = (coin: Coin) => {
-        if (!inputValue) return;
-        dispatch(openPopup({ title: `${coin.name} about`, children: <CoinPopup coin={coin} /> }));
-        setInputValue('');
-    }
+    const totalPages = Math.ceil(totalFilteredCount / perPage);
+    const displayTotalPages = totalPages === 0 ? 1 : totalPages;
+    const isNextDisabled = page >= displayTotalPages;
+    const isPrevDisabled = page === 1;
 
     return (
-        <div className="bg-[image:var(--color-background)] rounded-2xl flex gap-5 justify-between items-center p-2 flex-wrap max-[804px]:justify-center">
-            <h2 className="fontTitle text-2xl text-center">Watch all crypto</h2>
+        <div className="bg-(image:--color-background) rounded-2xl flex gap-5 justify-between items-center p-4 flex-wrap max-[804px]:justify-center shadow-xl border border-gray-700/50">
+            <div className="flex gap-1 flex-col items-start">
+                <h2 className="fontTitle text-2xl font-bold text-white">Watch all crypto</h2>
+                <h2 className="font-mono text-sm text-gray-400">
+                    Last update:
+                    <span className="ml-1 text-green-400 font-semibold">{ago}s</span> ago
+                </h2>
+            </div>
 
             <div className="flex gap-5 items-center flex-wrap">
-                {/* search */}
-                <div className="max-[500px]:w-full flex items-center gap-2 bg-[var(--color-card)] px-3 py-2 rounded border border-white/20">
+                <div className="max-[500px]:w-full flex items-center gap-2 px-3 py-2 rounded-xl border  transition duration-300 focus-within:border-indigo-400">
                     <input
                         id="search-input"
                         value={inputValue}
                         onChange={e => setInputValue(e.target.value)}
                         type="text"
-                        placeholder="Search..."
-                        className="bg-transparent outline-none text-[var:--color-text] border-[var:--color-text] placeholder-white/50 max-[500px]:w-full w-40 sm:w-60"
+                        placeholder="Search by name or symbol..."
+                        className="bg-transparent outline-none text-white placeholder-gray-400 max-[500px]:w-full w-40 sm:w-60"
                     />
-                    <button onClick={() => handleOpenPopup(filteredCoins[0])} className="w-8 h-8 opacity-80 cursor-pointer transitioned bg-[var(--color-card)] rounded-[50%] p-2 hover:scale-90">
-                        <img src={SearchSVG} alt="Search" />
-                    </button>
+                    <div className="w-8 h-8 opacity-80 text-gray-400 flex items-center justify-center">
+                        <img src={SearchSVG} alt="search" />
+                    </div>
                 </div>
             </div>
-            <div className="flex gap-1 items-center">
-                {/* navigation */}
+
+            <div className="flex gap-2 items-center">
                 <button
                     onClick={() => dispatch(setPage(page - 1))}
-                    disabled={page === 1}
-                    className="cursor-pointer px-4 py-2 bg-[var(--color-card)] text-[var:(--color-text)] border-[white] rounded border hover:scale-105 transitioned disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isPrevDisabled}
+                    className="cursor-pointer px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-indigo-600 font-medium"
                 >
-                    ←
+                    &larr;
                 </button>
                 <button
                     onClick={() => dispatch(setPage(page + 1))}
-                    disabled={page >= Math.ceil(filteredCoins.length / perPage)}
-                    className="cursor-pointer px-4 py-2 bg-[var(--color-card)] text-[var:(--color-text)] border-[white] rounded border hover:scale-105 transitioned disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={isNextDisabled}
+                    className="cursor-pointer px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-indigo-600 font-medium"
                 >
-                    →
+                    &rarr;
                 </button>
-
             </div>
         </div>
     );

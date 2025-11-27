@@ -33,8 +33,9 @@ export const formatPrice = (num: number | string) => {
     let minDecimals = 2;
 
     if (value < 1) {
-        maxDecimals = isMobile ? 3 : 4;
-    } else if (value > 100 && isMobile) {
+        maxDecimals = 4;
+        minDecimals = 2;
+    } else if (isMobile) {
         maxDecimals = 0;
         minDecimals = 0;
     }

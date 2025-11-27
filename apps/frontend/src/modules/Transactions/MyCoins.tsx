@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Select, { type SingleValue } from "react-select";
 import { useAppDispatch, useAppSelector } from "../../store";
 import type { Theme } from "../FixedFooter/theme.slice";
@@ -17,6 +17,8 @@ export function MyCoins() {
 
     const { data: userCoins } = useGetAllTransactionsGroupByCoinSymbolQuery(selectedWalletId || "", { skip: !selectedWalletId });
     const { data: allCoins } = useGetAllCoinsQuery();
+
+    const [selectedSort, setSelectedSort] = useState<{ value: string; label: string } | null>(null);
 
     const userCoinWithAPIData = useMemo(() => {
         if (!userCoins || !allCoins) return [];
@@ -38,40 +40,34 @@ export function MyCoins() {
         });
     }, [userCoins, allCoins]);
 
-    const [sortedCoins, setSortedCoins] = useState<CoinInfo[]>([]);
-    const [selectedSort, setSelectedSort] = useState<{ value: string; label: string } | null>(null);
-
-    useEffect(() => {
-        setSortedCoins(userCoinWithAPIData);
-    }, [userCoinWithAPIData]);
-
-    const handleSort = (option: SingleValue<{ value: string; label: string }>) => {
-        setSelectedSort(option);
-        if (!option) return;
-
-        if (option.value === "sort") {
-            setSortedCoins(userCoinWithAPIData);
-            return;
+    const sortedCoins = useMemo(() => {
+        if (!selectedSort || selectedSort.value === "sort") {
+            return userCoinWithAPIData;
         }
-
         const sorted = [...userCoinWithAPIData].sort((a, b) => {
             const aPrice = a.currentPrice || 0;
             const bPrice = b.currentPrice || 0;
             const aPnl = a.PNL || 0;
             const bPnl = b.PNL || 0;
 
-            if (option.value === "total_price") {
+            if (selectedSort.value === "total_price") {
                 return (b.totalQuantity * bPrice) - (a.totalQuantity * aPrice);
             }
-            if (option.value === "quantity") {
+            if (selectedSort.value === "quantity") {
                 return b.totalQuantity - a.totalQuantity;
             }
-            if (option.value === "profit") {
+            if (selectedSort.value === "profit") {
                 return bPnl - aPnl;
             }
             return 0;
         });
-        setSortedCoins(sorted);
+
+        return sorted;
+    }, [userCoinWithAPIData, selectedSort]);
+
+
+    const handleSort = (option: SingleValue<{ value: string; label: string }>) => {
+        setSelectedSort(option);
     };
 
     const handleOpenCoinPopup = (symbol: string) => () => {
@@ -82,9 +78,9 @@ export function MyCoins() {
     if (!userCoins || !allCoins) return <div className="text-center p-4">Loading assets...</div>;
 
     return (
-        <div>
+        <div className="p-4">
             <div className="w-full flex justify-between gap-10 mb-5 items-center">
-                <h1 className="fontTitle text-2xl">My coins:</h1>
+                <h1 className="fontTitle text-2xl font-bold text-white">My coins:</h1>
                 <div className="w-48">
                     <Select
                         options={SortOptions}
@@ -96,8 +92,8 @@ export function MyCoins() {
                 </div>
             </div>
 
-            <div className="bg-(--bg-secondary) rounded-xl overflow-hidden">
-                <div className="grid items-center grid-cols-5 max-[460px]:grid-cols-4 font-semibold border-b border-gray-700/20 pb-3 pt-3 px-2 text-sm text-gray-500 uppercase tracking-wider">
+            <div className="rounded overflow-hidden borde">
+                <div className="grid items-center grid-cols-5 max-[460px]:grid-cols-4 font-semibold border-b border-gray-700/20 pb-3 pt-3 px-2 text-sm text-gray-400 uppercase tracking-wider">
                     <div>Asset</div>
                     <div className="text-right">Qty</div>
                     <div className="text-right">Price</div>
@@ -112,15 +108,22 @@ export function MyCoins() {
                         <button
                             key={coin.coinSymbol}
                             onClick={handleOpenCoinPopup(coin.coinSymbol)}
-                            className="w-full cursor-pointer grid grid-cols-5 max-[460px]:grid-cols-4 items-center border-b border-gray-700/10 py-3 px-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                            className="w-full cursor-pointer grid grid-cols-5 max-[460px]:grid-cols-4 items-center border-b border-gray-700/10 py-3 px-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left text-white"
                         >
                             <div className="flex items-center gap-3">
-                                <img src={coin.image} alt={coin.coinSymbol} className="w-8 h-8 rounded-full bg-gray-200" />
+                                <img
+                                    src={coin.image}
+                                    alt={coin.coinSymbol}
+                                    className="w-8 h-8 rounded-full bg-gray-600 object-cover"
+                                    onError={(e) => {
+                                        e.currentTarget.src = 'https://placehold.co/32x32/1f2937/fff?text=?';
+                                    }}
+                                />
                                 <span className="font-bold uppercase max-[400px]:hidden">{coin.coinSymbol}</span>
                             </div>
                             <div className="text-right font-mono">{formatQuantity(coin.totalQuantity)}</div>
-                            <div className="text-right font-mono">{formatPrice(coin.currentPrice!)}</div>
-                            <div className="text-right font-mono max-[460px]:hidden">${coin.avgBuyingPrice}</div>
+                            <div className="text-right font-mono text-green-400">{formatPrice(coin.currentPrice!)}</div>
+                            <div className="text-right font-mono max-[460px]:hidden text-gray-400">${coin.avgBuyingPrice.toFixed(4)}</div>
                             <div className={`text-right font-mono font-bold ${(coin.PNL || 0) >= 0 ? 'text-green-500' : 'text-red-500'
                                 }`}>
                                 {(coin.PNL || 0) >= 0 ? '+' : ''}{coin.PNL}$
