@@ -6,15 +6,29 @@ import { WalletSelector } from "./WalletSelector";
 import { useGetWalletsQuery } from "../Wallet/wallet.api";
 import { UpdateWalletPopup } from "./UpdateWalletPopup";
 import { DeleteWalletPopup } from "./DeleteWalletPopup";
+import { useEffect } from "react";
+import { logout } from "../Auth/auth.slice";
 
 export function Header() {
     const dispatch = useAppDispatch();
     const user = useAppSelector(state => state.auth.user);
     const selectedWallet = useAppSelector(state => state.selectedWallet);
 
-    const { isFetching } = useGetWalletsQuery(undefined, {
-        skip: !user,
+    const { isFetching, error } = useGetWalletsQuery(undefined, {
+        skip: !user?.token,
     });
+
+    // Робить вихід навіть якщо користувач сидить на сайті весь день (Token expired)
+    useEffect(() => {
+        if (error) {
+            if ('status' in error && error.status === 401) {
+                console.log("Token expired. Logging out...");
+                dispatch(logout());
+                // window.location.reload(); не потрібен, адже налаштований auth.slice.ts 
+            }
+        }
+    }, [error, dispatch]);
+
 
     const handleAddWallet = () => {
         if (!user) {

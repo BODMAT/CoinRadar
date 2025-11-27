@@ -4,7 +4,6 @@ import { AuthPopup } from "./AuthPopup";
 
 export function Auth() {
     const currentUser = useAppSelector(state => state.auth.user);
-    // const { data: currentUser, isLoading } = useGetUserQuery();
 
     const dispatch = useAppDispatch();
     const handleOpenPopup = () => {

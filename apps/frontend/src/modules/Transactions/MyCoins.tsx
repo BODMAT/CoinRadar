@@ -97,11 +97,11 @@ export function MyCoins() {
             </div>
 
             <div className="bg-(--bg-secondary) rounded-xl overflow-hidden">
-                <div className="grid items-center grid-cols-5 max-[420px]:grid-cols-4 font-semibold border-b border-gray-700/20 pb-3 pt-3 px-2 text-sm text-gray-500 uppercase tracking-wider">
+                <div className="grid items-center grid-cols-5 max-[460px]:grid-cols-4 font-semibold border-b border-gray-700/20 pb-3 pt-3 px-2 text-sm text-gray-500 uppercase tracking-wider">
                     <div>Asset</div>
                     <div className="text-right">Qty</div>
                     <div className="text-right">Price</div>
-                    <div className="text-right max-md:hidden">Avg Buy</div>
+                    <div className="text-right max-[460px]:hidden">Avg Buy</div>
                     <div className="text-right">PnL</div>
                 </div>
 
@@ -112,15 +112,15 @@ export function MyCoins() {
                         <button
                             key={coin.coinSymbol}
                             onClick={handleOpenCoinPopup(coin.coinSymbol)}
-                            className="w-full cursor-pointer grid grid-cols-5 max-[420px]:grid-cols-4 items-center border-b border-gray-700/10 py-3 px-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                            className="w-full cursor-pointer grid grid-cols-5 max-[460px]:grid-cols-4 items-center border-b border-gray-700/10 py-3 px-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
                         >
                             <div className="flex items-center gap-3">
                                 <img src={coin.image} alt={coin.coinSymbol} className="w-8 h-8 rounded-full bg-gray-200" />
-                                <span className="font-bold uppercase">{coin.coinSymbol}</span>
+                                <span className="font-bold uppercase max-[400px]:hidden">{coin.coinSymbol}</span>
                             </div>
                             <div className="text-right font-mono">{formatQuantity(coin.totalQuantity)}</div>
                             <div className="text-right font-mono">{formatPrice(coin.currentPrice!)}</div>
-                            <div className="text-right font-mono max-md:hidden">${coin.avgBuyingPrice}</div>
+                            <div className="text-right font-mono max-[460px]:hidden">${coin.avgBuyingPrice}</div>
                             <div className={`text-right font-mono font-bold ${(coin.PNL || 0) >= 0 ? 'text-green-500' : 'text-red-500'
                                 }`}>
                                 {(coin.PNL || 0) >= 0 ? '+' : ''}{coin.PNL}$

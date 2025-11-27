@@ -107,6 +107,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                 <div className="flex flex-col gap-1">
                     <label className="text-sm font-bold">Type</label>
                     <select
+                        required
                         name="buyOrSell"
                         value={form.buyOrSell}
                         onChange={handleChange}
@@ -121,6 +122,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                     <div className="flex flex-col gap-1">
                         <label className="text-sm font-bold">Price</label>
                         <input
+                            required
                             className="p-2 border-2 border-gray-300 rounded focus:border-blue-500 outline-none"
                             type="text" name="price"
                             value={form.price} onChange={handleChange}
@@ -129,6 +131,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                     <div className="flex flex-col gap-1">
                         <label className="text-sm font-bold">Quantity</label>
                         <input
+                            required
                             className="p-2 border-2 border-gray-300 rounded focus:border-blue-500 outline-none"
                             type="text" name="quantity"
                             value={form.quantity} onChange={handleChange}
@@ -139,6 +142,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                 <div className="flex flex-col gap-1">
                     <label className="text-sm font-bold">Total</label>
                     <input
+                        required
                         className="p-2 border-2 border-gray-200 rounded"
                         type="text" name="total_price"
                         value={form.total_price} onChange={handleChange}
@@ -148,7 +152,9 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                 <div className="flex flex-col gap-1">
                     <label className="text-sm font-bold">Date</label>
                     <input
-                        className="p-2 border-2 border-gray-300 rounded"
+                        required
+                        className="p-2 border-2 border-gray-300 rounded text-white [&::-webkit-calendar-picker-indicator]:invert
+    [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                         type="date" name="date"
                         value={form.date} onChange={handleChange}
                         max={new Date().toISOString().split('T')[0]}
