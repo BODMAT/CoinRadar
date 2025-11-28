@@ -26,7 +26,7 @@ exports.getWallets = async (req: Request, res: Response) => {
                         buyOrSell: true,
                         coinSymbol: true
                     },
-                    orderBy: { date: 'desc' }
+                    orderBy: { createdAt: 'desc' }
                 }
             }
         });
@@ -124,7 +124,7 @@ exports.getWallet = async (req: Request, res: Response) => {
                         buyOrSell: true,
                         coinSymbol: true
                     },
-                    orderBy: { date: 'desc' }
+                    orderBy: { createdAt: 'desc' }
                 }
             }
         });

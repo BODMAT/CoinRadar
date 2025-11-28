@@ -47,3 +47,28 @@ export const formatPrice = (num: number | string) => {
         maximumFractionDigits: maxDecimals,
     }).format(value);
 };
+
+export const getLocalDatetime = (dateInput?: string | Date): string => {
+    let date: Date;
+    if (dateInput === undefined) {
+        date = new Date();
+    } else if (typeof dateInput === 'string') {
+        date = new Date(dateInput);
+    } else {
+        date = dateInput;
+    }
+
+    if (isNaN(date.getTime())) {
+        console.error("Помилка: Недійсний вхідний параметр дати.");
+        return '';
+    }
+    const pad = (num: number): string => String(num).padStart(2, '0');
+
+    const yyyy = date.getFullYear();
+    const mm = pad(date.getMonth() + 1);
+    const dd = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const min = pad(date.getMinutes());
+
+    return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+};

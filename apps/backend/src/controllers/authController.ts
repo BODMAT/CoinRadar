@@ -57,9 +57,8 @@ exports.registerUser = async (req: Request, res: Response) => {
 
     } catch (error: any) {
         if (error.code === 'P2002') {
-            const field = error.meta.target.includes('email') ? 'Email' : 'Login';
             return res.status(409).json({
-                error: `${field} is already taken. Please choose a different ${field.toLowerCase()}.`
+                error: `Login or email is already taken. Please choose a different.`
             });
         }
 

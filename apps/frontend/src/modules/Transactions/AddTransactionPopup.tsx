@@ -3,6 +3,7 @@ import type { Coin } from "../AllCrypto/all-crypto.schema";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closePopup, openPopup } from "../../portals/popup.slice";
 import { useCreateTransactionMutation, useGetCoinStatsQuery } from "./transaction.api";
+import { getLocalDatetime } from "../../utils/functions";
 
 export function AddTransactionPopup({ coin }: { coin: Coin }) {
     const dispatch = useAppDispatch();
@@ -19,7 +20,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
         quantity: "",
         price: coin.current_price.toString(),
         total_price: "",
-        date: new Date().toISOString().split('T')[0],
+        createdAt: getLocalDatetime(),
         buyOrSell: "buy" as "buy" | "sell"
     });
 
@@ -66,7 +67,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                     quantity: Number(form.quantity),
                     price: Number(form.price),
                     buyOrSell: form.buyOrSell,
-                    date: new Date(form.date)
+                    createdAt: new Date(form.createdAt)
                 }
             }).unwrap();
 
@@ -79,6 +80,8 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
             setAlert(error.data?.error || "Failed to add transaction");
         }
     };
+
+    const maxDateTime = getLocalDatetime();
 
     return (
         <div className="flex flex-col gap-5 p-2">
@@ -155,9 +158,9 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                         required
                         className="p-2 border-2 border-gray-300 rounded text-white [&::-webkit-calendar-picker-indicator]:invert
     [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                        type="date" name="date"
-                        value={form.date} onChange={handleChange}
-                        max={new Date().toISOString().split('T')[0]}
+                        type="datetime-local" name="createdAt"
+                        value={form.createdAt} onChange={handleChange}
+                        max={maxDateTime}
                     />
                 </div>
 

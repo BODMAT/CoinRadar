@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { useGetTransactionQuery, useUpdateTransactionMutation, useGetCoinStatsQuery } from "./transaction.api";
 import { closePopup, openPopup } from "../../portals/popup.slice";
 import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
+import { getLocalDatetime } from "../../utils/functions";
 
 export function ChangeTransactionPopup({ transactionId }: { transactionId: string }) {
     const selectedWalletId = useAppSelector((state) => state.selectedWallet.selectedWalletId);
@@ -27,7 +28,7 @@ export function ChangeTransactionPopup({ transactionId }: { transactionId: strin
         quantity: "",
         price: "",
         total_price: "",
-        date: "",
+        createdAt: "",
         buyOrSell: "buy" as "buy" | "sell"
     });
 
@@ -39,7 +40,7 @@ export function ChangeTransactionPopup({ transactionId }: { transactionId: strin
                 quantity: transaction.quantity.toString(),
                 price: transaction.price.toString(),
                 total_price: (transaction.price * transaction.quantity).toString(),
-                date: new Date(transaction.date).toISOString().split('T')[0],
+                createdAt: getLocalDatetime(transaction.createdAt),
                 buyOrSell: transaction.buyOrSell
             });
         }
@@ -85,7 +86,7 @@ export function ChangeTransactionPopup({ transactionId }: { transactionId: strin
                 data: {
                     quantity: Number(form.quantity),
                     price: Number(form.price),
-                    date: new Date(form.date),
+                    createdAt: new Date(form.createdAt),
                     buyOrSell: form.buyOrSell,
                 }
             }).unwrap();
@@ -99,6 +100,8 @@ export function ChangeTransactionPopup({ transactionId }: { transactionId: strin
             setAlert(error.data?.error || "Failed to update transaction");
         }
     };
+
+    const maxDateTime = getLocalDatetime(new Date().toISOString());
 
     return (
         <div className="flex flex-col gap-5 p-2">
@@ -179,9 +182,9 @@ export function ChangeTransactionPopup({ transactionId }: { transactionId: strin
                         required
                         className="p-2 border-2 border-gray-300 rounded text-white [&::-webkit-calendar-picker-indicator]:invert
     [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-                        type="date" name="date"
-                        value={form.date} onChange={handleChange}
-                        max={new Date().toISOString().split('T')[0]}
+                        type="datetime-local" name="createdAt"
+                        value={form.createdAt} onChange={handleChange}
+                        max={maxDateTime}
                     />
                 </div>
 

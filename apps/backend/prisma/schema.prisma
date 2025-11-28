@@ -29,7 +29,9 @@ model Transactions {
   buyOrSell BuyOrSell
   price     Decimal   @db.Decimal(30, 10)
   quantity  Decimal   @db.Decimal(30, 10)
-  date      DateTime  @default(now()) @db.Date
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt //auto upd
 
   wallet Wallet @relation(fields: [walletId], references: [id])
 }

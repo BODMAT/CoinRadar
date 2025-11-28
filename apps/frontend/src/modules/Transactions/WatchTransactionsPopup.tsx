@@ -108,7 +108,10 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
                             <div className="max-[460px]:hidden uppercase font-bold text-xs">{transaction.buyOrSell}</div>
                             <div>{formatQuantity(transaction.quantity)}</div>
                             <div>{formatPrice(transaction.price)}</div>
-                            <div className="max-[560px]:hidden text-xs text-gray-500">{new Date(transaction.date).toLocaleDateString()}</div>
+
+                            <div className="max-[560px]:hidden text-xs text-gray-500">
+                                {new Date(transaction.createdAt).toLocaleString()}
+                            </div>
 
                             <button onClick={() => handleChangeTransaction(transaction.id)} className="flex justify-center items-center hover:scale-110 transition-transform cursor-pointer">
                                 <img className="w-6 h-6" src={EditSVG} alt="edit" />

@@ -9,7 +9,9 @@ const TransactionResponseSchema = z.object({
 
     coinSymbol: z.string(),
 
-    date: z.coerce.date(),
+    createdAt: z.coerce.date(),
+    updatedAt: z.coerce.date(),
+
     price: decimalSchema,
     quantity: decimalSchema,
     total: z.number().optional(),
@@ -35,7 +37,7 @@ const CreateTransactionDto = z.object({
     quantity: z.number().positive(),
     walletId: z.string().uuid().optional(),
 
-    date: z.coerce.date()
+    createdAt: z.coerce.date()
         .refine((date: Date) => {
             const now = new Date();
             const buffer = 5 * 60 * 1000;

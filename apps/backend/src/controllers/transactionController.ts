@@ -32,7 +32,7 @@ exports.getTransactions = async (req: Request, res: Response) => {
 
         const transactions = await prisma.transactions.findMany({
             where: { walletId },
-            orderBy: { date: 'desc' }
+            orderBy: { createdAt: 'desc' }
         });
 
         const formatted = transactions.map((tx: TransactionPayload) => formatTransaction(tx));
@@ -58,14 +58,14 @@ exports.createTransaction = async (req: Request, res: Response) => {
             return handleZodError(res, validationResult.error);
         }
 
-        const { coinSymbol, buyOrSell, price, quantity, date } = validationResult.data;
+        const { coinSymbol, buyOrSell, price, quantity, createdAt } = validationResult.data;
 
         if (buyOrSell === 'sell') {
-            const currentBalance = await getCoinBalance(walletId, coinSymbol);
+            const balanceAtTime = await getCoinBalance(walletId, coinSymbol, createdAt);
 
-            if (currentBalance < quantity) {
+            if (balanceAtTime < quantity) {
                 return res.status(400).json({
-                    error: `Insufficient funds. You have ${currentBalance} ${coinSymbol.toUpperCase()}, but tried to sell ${quantity}.`
+                    error: `Insufficient funds. Available balance was ${balanceAtTime} ${coinSymbol.toUpperCase()} before transaction time (${createdAt.toLocaleString()}), but tried to sell ${quantity}.`
                 });
             }
         }
@@ -77,7 +77,7 @@ exports.createTransaction = async (req: Request, res: Response) => {
                 buyOrSell,
                 price,
                 quantity,
-                date: date
+                createdAt
             }
         });
 
@@ -111,7 +111,7 @@ exports.getPaginatedTransactions = async (req: Request, res: Response) => {
             prisma.transactions.count({ where: { walletId } }),
             prisma.transactions.findMany({
                 where: { walletId },
-                orderBy: { date: 'desc' },
+                orderBy: { createdAt: 'desc' },
                 take: limit,
                 skip: skip
             })
@@ -154,7 +154,10 @@ exports.getTransaction = async (req: Request, res: Response) => {
         }
 
         const formatted = formatTransaction(transaction as TransactionPayload);
-        return res.status(200).json(formatted);
+
+        const validatedResponse = TransactionResponseSchema.parse(formatted);
+
+        return res.status(200).json(validatedResponse);
 
     } catch (error) {
         if (error instanceof z.ZodError) return handleZodError(res, error);
@@ -174,17 +177,45 @@ exports.deleteTransaction = async (req: Request, res: Response) => {
 
         if (!transactionToDelete) return res.status(404).json({ error: 'Transaction not found' });
 
-        if (transactionToDelete.buyOrSell === 'buy') {
-            const currentBalance = await getCoinBalance(walletId, transactionToDelete.coinSymbol);
-            const qtyToDelete = Number(transactionToDelete.quantity);
+        const qtyToDelete = Number(transactionToDelete.quantity);
+        const symbol = transactionToDelete.coinSymbol;
 
-            if (currentBalance < qtyToDelete) {
+        if (transactionToDelete.buyOrSell === 'buy') {
+            // Get a net effect (balance) from all transactions that occurred STRICTLY AFTER the deleted purchase
+            const subsequentTransactions = await prisma.transactions.findMany({
+                where: {
+                    walletId,
+                    coinSymbol: symbol,
+                    createdAt: { gt: transactionToDelete.createdAt }, // strictly after
+                },
+                select: { buyOrSell: true, quantity: true }
+            });
+
+            let subsequentBalance = 0;
+            for (const tx of subsequentTransactions) {
+                const qty = Number(tx.quantity);
+                if (tx.buyOrSell === 'buy') {
+                    subsequentBalance += qty;
+                } else {
+                    subsequentBalance -= qty;
+                }
+            }
+
+            // Get the balance BEFORE the date of the deleted transaction (everything that was BEFORE)
+            const balanceBeforeTx = await getCoinBalance(walletId, symbol, transactionToDelete.createdAt);
+
+            // Calculation of the total modelled balance (Balance before Tx + Net effect after Tx)
+            // If we remove Tx, then the final balance = (Balance UP) + (Effect AFTER)
+            const finalBalance = balanceBeforeTx + subsequentBalance;
+
+            if (finalBalance < 0) {
                 return res.status(400).json({
-                    error: `Cannot delete purchase. This would result in a negative balance of ${transactionToDelete.coinSymbol.toUpperCase()} because you have subsequent sells.`
+                    error: `Cannot delete purchase. This would result in a negative balance of ${symbol.toUpperCase()} because subsequent sales depend on this purchase. Balance would be ${finalBalance.toFixed(8)}.`
                 });
             }
         }
 
+        // Removal (if it was a sale, no verification is necessary, since removing the sale cannot create a negative balance)
         const deleted = await prisma.transactions.delete({
             where: { id: transactionId }
         });
@@ -210,45 +241,81 @@ exports.updateTransaction = async (req: Request, res: Response) => {
         const validationResult = CreateTransactionDto.omit({ walletId: true, coinSymbol: true }).partial().safeParse(req.body);
         if (!validationResult.success) return handleZodError(res, validationResult.error);
 
-        const { price, quantity, buyOrSell, date } = validationResult.data;
+        const { price, quantity, buyOrSell, createdAt } = validationResult.data;
 
-        // ! ЛОГІКА ВАЛІДАЦІЇ БАЛАНСУ (СКЛАДНА)
-        // треба змоделювати баланс "що буде, якщо ми змінимо це".
-        const currentBalance = await getCoinBalance(walletId, oldTransaction.coinSymbol);
-
-        // "Відкат" вплив старої транзакції
-        let balanceWithoutTx = currentBalance;
-        if (oldTransaction.buyOrSell === 'buy') {
-            balanceWithoutTx -= Number(oldTransaction.quantity);
-        } else {
-            balanceWithoutTx += Number(oldTransaction.quantity);
-        }
-
-        // Застосовую нові дані (або старі, якщо поле не змінювалось)
         const newQuantity = quantity !== undefined ? quantity : Number(oldTransaction.quantity);
         const newType = buyOrSell !== undefined ? buyOrSell : oldTransaction.buyOrSell;
+        const newCreatedAt = createdAt !== undefined ? createdAt : oldTransaction.createdAt;
+        const symbol = oldTransaction.coinSymbol;
 
-        let finalBalance = balanceWithoutTx;
-        if (newType === 'buy') {
-            finalBalance += newQuantity;
-        } else {
-            finalBalance -= newQuantity;
+        //! COMPLEX BALANCE VALIDATION LOGIC (CHRONOLOGICAL RECALCULATION)
+
+        // Receive all transactions except the one we edit
+        const transactionsWithoutCurrent = await prisma.transactions.findMany({
+            where: {
+                walletId,
+                coinSymbol: symbol,
+                id: { not: transactionId } // Exclude old transaction
+            },
+            // Sorting by date VERY IMPORTANT for correct recalculation
+            orderBy: { createdAt: 'asc' }
+        });
+
+        const simulatedTransactions = [...transactionsWithoutCurrent];
+        const newSimulatedTx = {
+            id: transactionId,
+            buyOrSell: newType,
+            quantity: newQuantity,
+            createdAt: newCreatedAt,
+        };
+
+        let insertionIndex = simulatedTransactions.length;
+        for (let i = 0; i < simulatedTransactions.length; i++) {
+            if (newCreatedAt < simulatedTransactions[i].createdAt) {
+                insertionIndex = i;
+                break;
+            }
+        }
+        simulatedTransactions.splice(insertionIndex, 0, newSimulatedTx as any);
+
+        // We count the balance CONSISTENTLY for each transaction
+        let runningBalance = 0;
+        let negativeBalanceOccurred = false;
+
+        for (const tx of simulatedTransactions) {
+            const qty = Number(tx.quantity);
+            if (tx.buyOrSell === 'buy') {
+                runningBalance += qty;
+            } else {
+                runningBalance -= qty;
+            }
+
+            // Check: balance must not become negative at any point in history
+            if (runningBalance < 0) {
+                negativeBalanceOccurred = true;
+                break; // There is no point in continuing if the balance is broken
+            }
         }
 
-        // Перевірка
-        if (finalBalance < 0) {
+        if (negativeBalanceOccurred) {
             return res.status(400).json({
-                error: `Cannot update transaction. This change results in a negative balance (${finalBalance} ${oldTransaction.coinSymbol.toUpperCase()}).`
+                error: `Cannot update transaction. This change violates the chronological balance resulting in a negative balance for ${symbol.toUpperCase()}.`
             });
         }
 
         const updated = await prisma.transactions.update({
             where: { id: transactionId },
-            data: { price, quantity, buyOrSell, date },
+            data: {
+                price,
+                quantity,
+                buyOrSell,
+                createdAt: newCreatedAt
+            },
         });
 
         const formatted = formatTransaction(updated as TransactionPayload);
-        return res.status(200).json(formatted);
+        const validatedResponse = TransactionResponseSchema.parse(formatted);
+        return res.status(200).json(validatedResponse);
 
     } catch (error: any) {
         if (error.code === 'P2025') return res.status(404).json({ error: 'Transaction not found' });
@@ -265,7 +332,7 @@ exports.getAllTransactionsGroupByCoinSymbol = async (req: Request, res: Response
 
         const transactions = await prisma.transactions.findMany({
             where: { walletId },
-            orderBy: { date: 'asc' }
+            orderBy: { createdAt: 'asc' }
         });
 
         const portfolioDict: Record<string, {
@@ -340,7 +407,7 @@ exports.getTransactionsByCoin = async (req: Request, res: Response) => {
                 walletId,
                 coinSymbol: coinSymbol.toLowerCase()
             },
-            orderBy: { date: 'desc' }
+            orderBy: { createdAt: 'desc' }
         });
 
         const formatted = transactions.map((tx: TransactionPayload) => formatTransaction(tx));
@@ -370,7 +437,7 @@ exports.getCoinStats = async (req: Request, res: Response) => {
                 walletId,
                 coinSymbol: coinSymbol.toLowerCase()
             },
-            orderBy: { date: 'asc' }
+            orderBy: { createdAt: 'asc' }
         });
 
         let currentQuantity = 0;
