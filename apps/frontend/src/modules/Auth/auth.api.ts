@@ -4,7 +4,7 @@ import type { RootState } from "../../store";
 import { setUserData, logout } from './auth.slice';
 import { clearWalletState, setWalletsList } from "../Wallet/selectedWallet.slice";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://coinradar-wmzg.onrender.com/api/";
 const STORAGE_KEY = import.meta.env.VITE_USER_STORAGE_KEY || "user-storage-coinradar";
 
 export const authApi = createApi({

@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery, } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "../../store";
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://coinradar-wmzg.onrender.com/api/";
 import type { Transaction, PaginatedTransactions, CreateTransaction } from "./transaction.schema";
 import { PaginatedTransactionsSchema, TransactionResponseSchema, TransactionResponseArraySchema } from "./transaction.schema";
 import type { CoinForChart, CoinInfo } from "./coinInfo.schema";

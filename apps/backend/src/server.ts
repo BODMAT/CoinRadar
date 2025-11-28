@@ -11,8 +11,13 @@ const transactionRouter = require('./router/transactionRouter');
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
 
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://bodmat.github.io'
+];
+
 app.use(express.json());
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors({ origin: allowedOrigins }));
 
 // Routers
 app.use('/api/auth', authRouter);
