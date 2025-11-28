@@ -1,5 +1,27 @@
-# Logs
-logs
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build and Output
+dist/
+dist-ssr/
+build/
+out/
+.next/
+.turbo/
+
+# Local/Environment Files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.production
+*.local
+
+# Logs and Debugging
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,22 +29,27 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# Testing
+coverage/
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# Deployment Tools
+.vercel/
+
+# Editor and OS Files
 .DS_Store
+.vscode/
+!.vscode/extensions.json
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
 
+# Misc
+*.pem
 public/*.psd
-.env
-.env.production
+
+node_modules/
+**/node_modules
+.vite/
