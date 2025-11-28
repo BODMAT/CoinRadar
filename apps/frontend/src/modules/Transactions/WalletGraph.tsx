@@ -16,57 +16,98 @@ import type { ChartOptions } from "chart.js";
 import { useAppSelector } from "../../store";
 import type { Theme } from "../FixedFooter/theme.slice";
 import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
+import { useGetAllTransactionsGroupByCoinSymbolQuery, useGetGroupedTransactionsForChartQuery } from "./transaction.api";
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Tooltip, Legend, TimeScale, Filler);
-
 type Point = { x: number; y: number };
+const MS_PER_HOUR = 3600000; // 1 hour in milliseconds
+const NUM_POINTS = 168; // 24 hours * 7 days
 
 export function WalletGraph() {
-    return null
-
     const theme: Theme = useAppSelector((state) => state.theme.theme);
-    const user = useAppSelector(state => state.auth.user);
-    // const { data: wallet } = useGetWalletQuery(user?.uid || "", { skip: !user });
+    const selectedWalletId = useAppSelector(state => state.selectedWallet.selectedWalletId);
     const { data: allCoins } = useGetAllCoinsQuery();
+    const { data: agregatedTransactions } = useGetGroupedTransactionsForChartQuery(
+        { walletId: selectedWalletId || "" },
+        { skip: !selectedWalletId }
+    );
 
-    //! this algorithm is not optimal, cause luck of CoinGecko API or its limits for free users
+    const { data: userCoins } = useGetAllTransactionsGroupByCoinSymbolQuery(selectedWalletId || "", { skip: !selectedWalletId });
+
     const chartData: Point[] = useMemo(() => {
-        // if (!wallet || !allCoins) return [];
-
-        const result: Point[] = [];
-
-        const today = new Date();
-        const last7Days = Array.from({ length: 7 }).map((_, i) => {
-            const d = new Date();
-            d.setDate(today.getDate() - (6 - i));
-            return d;
-        });
-
-        for (const day of last7Days) {
-            let totalValue = 0;
-
-            for (const coinData of wallet.coins) {
-                let quantity = 0;
-
-                for (const tx of coinData.transactions) {
-                    const txDate = new Date(tx.date);
-                    if (txDate <= day) {
-                        if (tx.buyOrSell === "buy") quantity += tx.quantity;
-                        else if (tx.buyOrSell === "sell") quantity -= tx.quantity;
-                    }
-                }
-
-                const marketCoin = allCoins.find(c => c.id === coinData.id);
-                const price = marketCoin ? marketCoin.current_price : 0;
-
-                totalValue += quantity * price;
-            }
-
-            result.push({ x: day.getTime(), y: Number(totalValue.toFixed(2)) });
+        if (!agregatedTransactions || !allCoins || agregatedTransactions.length === 0) {
+            return [];
         }
 
-        return result;
-    }, [wallet, allCoins]);
+        const now = Date.now();
+        const startTime = now - 7 * 24 * MS_PER_HOUR;
+        const timeScale: number[] = Array.from({ length: NUM_POINTS }, (_, i) => startTime + i * MS_PER_HOUR);
+
+        const currentNetQuantity: Record<string, number> = {};
+        const txPointers: Record<string, number> = {};
+        const marketDataMap: Record<string, typeof allCoins[0]> = allCoins.reduce((acc, coin) => {
+            acc[coin.symbol.toLowerCase()] = coin;
+            return acc;
+        }, {} as Record<string, typeof allCoins[0]>);
+
+        agregatedTransactions.forEach(coinGroup => {
+            const symbol = coinGroup.coinSymbol;
+            currentNetQuantity[symbol] = coinGroup.initialQuantity;
+            txPointers[symbol] = 0;
+        });
+
+        const finalChartPoints: Point[] = [];
+        timeScale.forEach((time, index) => {
+            let totalPortfolioValue = 0;
+
+            agregatedTransactions.forEach(coinGroup => {
+                const symbol = coinGroup.coinSymbol;
+                const marketCoin = marketDataMap[symbol];
+
+                const prices = marketCoin?.sparkline_in_7d?.price;
+                if (!prices || index >= prices.length) return;
+
+                const events = coinGroup.agregatedData;
+
+                while (
+                    txPointers[symbol] < events.length &&
+                    events[txPointers[symbol]].createdAt.getTime() <= time
+                ) {
+                    const tx = events[txPointers[symbol]];
+                    currentNetQuantity[symbol] += (tx.buyOrSell === 'buy' ? tx.quantity : -tx.quantity);
+                    txPointers[symbol]++;
+                }
+
+                const marketPrice = prices[index];
+                totalPortfolioValue += currentNetQuantity[symbol] * marketPrice;
+            });
+
+            finalChartPoints.push({
+                x: time,
+                y: totalPortfolioValue,
+            });
+        });
+
+        //! add final value 169 point - now
+        let finalPortfolioValue = 0;
+        agregatedTransactions.forEach(coinGroup => {
+            const symbol = coinGroup.coinSymbol;
+            const marketCoin = marketDataMap[symbol];
+            const currentPrice = marketCoin?.current_price;
+            const currentBalance = userCoins?.find(coin => coin.coinSymbol === symbol)?.totalQuantity;
+
+            if (currentPrice !== undefined && currentBalance !== undefined) {
+                finalPortfolioValue += currentBalance * currentPrice;
+            }
+        });
+        finalChartPoints.push({
+            x: Date.now(),
+            y: finalPortfolioValue,
+        });
+        return finalChartPoints;
+
+
+    }, [agregatedTransactions, allCoins]);
 
     const isGrowing = chartData.length > 1 && chartData.at(-1)!.y > chartData[0]!.y;
     const lineColor = isGrowing ? "#4caf50" : "#f44336";

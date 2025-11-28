@@ -9,4 +9,14 @@ const CoinInfoSchema = z.object({
     // PNL: z.number().optional(),
 });
 
-module.exports = { CoinInfoSchema };
+const CoinForChartSchema = z.object({
+    coinSymbol: z.string(),
+    agregatedData: z.array(z.object({
+        createdAt: z.coerce.date(),
+        quantity: z.number().nonnegative(),
+        buyOrSell: z.enum(["buy", "sell"]),
+    })),
+    initialQuantity: z.number().nonnegative(),
+});
+
+module.exports = { CoinInfoSchema, CoinForChartSchema };

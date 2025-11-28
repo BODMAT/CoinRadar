@@ -126,7 +126,7 @@ export function MyCoins() {
                             <div className="text-right font-mono max-[460px]:hidden text-gray-400">${coin.avgBuyingPrice.toFixed(4)}</div>
                             <div className={`text-right font-mono font-bold ${(coin.PNL || 0) >= 0 ? 'text-green-500' : 'text-red-500'
                                 }`}>
-                                {(coin.PNL || 0) >= 0 ? '+' : ''}{coin.PNL}$
+                                {(coin.PNL || 0) >= 0 ? '+' : ''}{formatQuantity(coin.PNL || 0)}$
                             </div>
                         </button>
                     ))

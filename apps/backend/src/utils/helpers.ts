@@ -105,3 +105,21 @@ exports.calculateWalletStats = (transactions: any[]): { invested: number, realiz
         realized: Number(totalRealizedPnL.toFixed(2))
     };
 };
+
+exports.getStartDate = (range: string): Date => {
+    const now = new Date();
+    switch (range) {
+        case '7d':
+            now.setDate(now.getDate() - 7);
+            break;
+        case '30d':
+            now.setDate(now.getDate() - 30);
+            break;
+        case '365d':
+            now.setFullYear(now.getFullYear() - 1);
+            break;
+        default:
+            now.setDate(now.getDate() - 7);
+    }
+    return now;
+};

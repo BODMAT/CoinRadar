@@ -3,8 +3,8 @@ import type { RootState } from "../../store";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/";
 import type { Transaction, PaginatedTransactions, CreateTransaction } from "./transaction.schema";
 import { PaginatedTransactionsSchema, TransactionResponseSchema, TransactionResponseArraySchema } from "./transaction.schema";
-import type { CoinInfo } from "./coinInfo.schema";
-import { CoinInfoArraySchema, CoinInfoSchema } from "./coinInfo.schema";
+import type { CoinForChart, CoinInfo } from "./coinInfo.schema";
+import { CoinForChartArraySchema, CoinInfoArraySchema, CoinInfoSchema } from "./coinInfo.schema";
 import { walletApi } from "../Wallet/wallet.api";
 
 export const transactionApi = createApi({
@@ -159,6 +159,22 @@ export const transactionApi = createApi({
                 return CoinInfoSchema.parse(response);
             },
         }),
+
+        getGroupedTransactionsForChart: builder.query<CoinForChart[], { walletId: string; range?: string }>({
+            query: ({ walletId, range = '7d' }) => {
+                return {
+                    url: `wallets/${walletId}/transactions/chart-data`,
+                    params: { range } // ?range=7d or ?range=30d
+                };
+            },
+            providesTags: (result, error, { walletId }) => [
+                { type: 'Transaction', id: 'LIST' },
+                { type: 'Transaction', id: `CHART-${walletId}` } // Специфічний тег
+            ],
+            transformResponse: (response: unknown) => {
+                return CoinForChartArraySchema.parse(response);
+            },
+        }),
     }),
 });
 
@@ -171,5 +187,6 @@ export const {
     useUpdateTransactionMutation,
     useGetTransactionsByCoinQuery,
     useGetAllTransactionsGroupByCoinSymbolQuery,
-    useGetCoinStatsQuery
+    useGetCoinStatsQuery,
+    useGetGroupedTransactionsForChartQuery
 } = transactionApi;

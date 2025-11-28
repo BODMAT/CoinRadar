@@ -109,7 +109,7 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
                             <div>{formatQuantity(transaction.quantity)}</div>
                             <div>{formatPrice(transaction.price)}</div>
 
-                            <div className="max-[560px]:hidden text-xs text-gray-500">
+                            <div className="max-[560px]:hidden text-xs">
                                 {new Date(transaction.createdAt).toLocaleString()}
                             </div>
 

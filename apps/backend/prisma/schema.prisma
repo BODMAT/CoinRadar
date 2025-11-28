@@ -33,7 +33,7 @@ model Transactions {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt //auto upd
 
-  wallet Wallet @relation(fields: [walletId], references: [id])
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 }
 
 model Wallet {

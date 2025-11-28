@@ -8,10 +8,10 @@ const {
     CreateTransactionDto,
     PaginatedTransactionsSchema
 } = require('../models/TransactionSchema');
-const { handleZodError } = require('../utils/helpers');
+const { handleZodError, getStartDate } = require('../utils/helpers');
 
 const TransactionsArraySchema = z.array(TransactionResponseSchema);
-const { CoinInfoSchema } = require('../models/CoinInfoSchema');
+const { CoinInfoSchema, CoinForChartSchema } = require('../models/CoinInfoSchema');
 
 type TransactionPayload = Prisma.TransactionsGetPayload<{}>;
 
@@ -478,3 +478,89 @@ exports.getCoinStats = async (req: Request, res: Response) => {
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+// ======================================================================
+
+exports.getGroupedTransactionsForChart = async (req: Request, res: Response) => {
+    try {
+        const { walletId } = req.params;
+        let { range } = req.query as { range?: string };
+        const effectiveRange = range || '7d'; // Default
+
+        if (!walletId) {
+            return res.status(400).json({ error: 'Wallet ID is required.' });
+        }
+        const startDate = getStartDate(effectiveRange);
+
+        // Get initial balance (parsed Decimal quantities safely)
+        const initialBalanceAggregations = await prisma.$queryRaw`
+            SELECT 
+                "coinSymbol",
+                SUM(CASE WHEN "buyOrSell" = 'buy' THEN "quantity" ELSE -"quantity" END) AS "initialQuantity"
+            FROM "Transactions"
+            WHERE 
+                "walletId" = ${walletId} AND "createdAt" < ${startDate}
+            GROUP BY "coinSymbol"
+            HAVING SUM(CASE WHEN "buyOrSell" = 'buy' THEN "quantity" ELSE -"quantity" END) != 0;
+        `;
+        const initialBalances: Record<string, number> = {};
+        for (const agg of initialBalanceAggregations as any[]) {
+            initialBalances[agg.coinSymbol] = Number(agg.initialQuantity) || 0;
+        }
+
+        // TRANSACTION in range
+        const transactionsInPeriod = await prisma.transactions.findMany({
+            where: {
+                walletId,
+                createdAt: { gte: startDate }
+            },
+            select: {
+                coinSymbol: true,
+                createdAt: true,
+                quantity: true,
+                buyOrSell: true,
+            },
+            orderBy: { createdAt: 'asc' }
+        });
+
+        const groupedData: Record<string, { coinSymbol: string; initialQuantity: number; agregatedData: { createdAt: Date; quantity: number; buyOrSell: string; }[] }> = {};
+
+        for (const tx of transactionsInPeriod) {
+            const symbol = tx.coinSymbol;
+
+            if (!groupedData[symbol]) {
+                groupedData[symbol] = {
+                    coinSymbol: symbol,
+                    agregatedData: [],
+                    initialQuantity: initialBalances[symbol] ?? 0
+                };
+            }
+
+            groupedData[symbol].agregatedData.push({
+                createdAt: tx.createdAt,
+                quantity: Number(tx.quantity),
+                buyOrSell: tx.buyOrSell,
+            });
+        }
+
+        // Add missing symbols - sleeping coins 
+        Object.keys(initialBalances).forEach(symbol => {
+            if (!groupedData[symbol]) {
+                groupedData[symbol] = {
+                    coinSymbol: symbol,
+                    agregatedData: [],
+                    initialQuantity: initialBalances[symbol] ?? 0
+                };
+            }
+        });
+
+        const finalGroupedArray = Object.values(groupedData);
+        const validatedResponse = z.array(CoinForChartSchema).parse(finalGroupedArray);
+        return res.status(200).json(validatedResponse);
+
+    } catch (error) {
+        if (error instanceof z.ZodError) return handleZodError(res, error);
+        console.error('Error getting coin stats:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
