@@ -1,2 +1,2 @@
-## Practice frontend: Redux, Redux Toolkit, RTK Query
-## Practice backend: Node.js (Express), PostgreSQL, Prisma ORM, Zod, Render
+## Frontend: React, TailwindCSS, Chart.js, Redux, Redux Toolkit, RTK Query, Framer Motion
+## Backend: Node.js (Express), PostgreSQL, Prisma ORM, Zod, JWT, TS

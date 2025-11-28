@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon --exec \"ts-node --esm src/server.ts\"",
     "prisma": "prisma",
-    "seed": "ts-node ./src/prisma.ts"
+    "seed": "ts-node ./src/prisma.ts",
+    "build": "tsc"
   },
   "author": "",
   "license": "ISC",

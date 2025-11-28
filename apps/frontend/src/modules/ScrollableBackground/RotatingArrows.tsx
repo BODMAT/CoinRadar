@@ -82,7 +82,7 @@ export function ScrollableBackground() {
     }, [scrollY, sectionIds, currentSectionId, dispatch, isMobile]);
 
     return (
-        <div className="fixed top-0 left-0 w-screen h-screen z-[-1] pt-[80px]">
+        <div className="fixed top-0 left-0 w-screen h-screen z-[-1] pt-20">
             <img src="./background.png" alt="background" className="w-full h-full object-cover" />
             <div className="absolute top-0 left-0 w-full h-full bg-black/50" />
             <div className="absolute top-0 left-0 w-full h-full">

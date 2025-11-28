@@ -11,7 +11,7 @@ import {
     type Login,
     type Register
 } from "./auth.schema";
-import { useAppDispatch, useAppSelector, type RootState } from "../../store";
+import { useAppDispatch, useAppSelector } from "../../store";
 import { closePopup } from "../../portals/popup.slice";
 
 type CombinedFormKeys = 'login' | 'password' | 'email';

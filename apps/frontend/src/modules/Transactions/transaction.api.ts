@@ -94,7 +94,7 @@ export const transactionApi = createApi({
                 url: `wallets/${walletId}/transactions/${transactionId}`,
                 method: "DELETE",
             }),
-            invalidatesTags: (result, error, { transactionId }) => [
+            invalidatesTags: (_, __, { transactionId }) => [
                 { type: 'Transaction', id: transactionId },
                 { type: 'Transaction', id: 'LIST' }
             ],
@@ -115,7 +115,7 @@ export const transactionApi = createApi({
                 method: "PATCH",
                 body: data,
             }),
-            invalidatesTags: (result, error, { transactionId }) => [
+            invalidatesTags: (_, __, { transactionId }) => [
                 { type: 'Transaction', id: transactionId },
                 { type: 'Transaction', id: 'LIST' }
             ],
@@ -167,7 +167,7 @@ export const transactionApi = createApi({
                     params: { range } // ?range=7d or ?range=30d
                 };
             },
-            providesTags: (result, error, { walletId }) => [
+            providesTags: (_, __, { walletId }) => [
                 { type: 'Transaction', id: 'LIST' },
                 { type: 'Transaction', id: `CHART-${walletId}` } // Специфічний тег
             ],

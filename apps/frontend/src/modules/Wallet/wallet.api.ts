@@ -76,7 +76,7 @@ export const walletApi = createApi({
                 return parsedWallet;
             },
 
-            invalidatesTags: (result, error, { id }) => [
+            invalidatesTags: (_, __, { id }) => [
                 { type: 'Wallet' as const, id },
                 { type: 'Wallet' as const, id: 'LIST' },
             ],
@@ -86,7 +86,7 @@ export const walletApi = createApi({
                 url: `wallets/${walletId}`,
                 method: "DELETE",
             }),
-            invalidatesTags: (result, error, walletId) => [
+            invalidatesTags: (_, __, walletId) => [
                 { type: "Wallet" as const, id: walletId },
                 { type: "Wallet" as const, id: 'LIST' },
             ],
