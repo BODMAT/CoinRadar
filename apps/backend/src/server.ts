@@ -6,7 +6,6 @@ const prisma = require('./prisma');
 
 const authRouter = require('./router/authRouter');
 const walletRouter = require('./router/walletRouter');
-const transactionRouter = require('./router/transactionRouter');
 
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
@@ -22,7 +21,6 @@ app.use(cors({ origin: allowedOrigins }));
 // Routers
 app.use('/api/auth', authRouter);
 app.use('/api/wallets', walletRouter);
-app.use('/api/transactions', transactionRouter);
 
 app.get('/api/status', async (req: Request, res: Response) => {
     try {
