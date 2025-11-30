@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState } from "../../store";
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://coinradar-wmzg.onrender.com/api/";
 import type { Wallet, WalletCreate, WalletPatch } from "./wallet.schema";
 import { WalletSchema } from "./wallet.schema";
 import { setWalletsList } from "./selectedWallet.slice";
