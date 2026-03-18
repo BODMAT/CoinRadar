@@ -7,6 +7,7 @@ import { authApi } from './modules/Auth/auth.api';
 import { allCryptoApi } from './modules/AllCrypto/all-crypto.api';
 import { walletApi } from './modules/Wallet/wallet.api';
 import { transactionApi } from './modules/Transactions/transaction.api';
+import { swapApi } from './modules/Transactions/swap.api';
 import authReducer from './modules/Auth/auth.slice';
 import selectedWalletReducer from './modules/Wallet/selectedWallet.slice';
 
@@ -26,12 +27,13 @@ export const store = configureStore({
         [authApi.reducerPath]: authApi.reducer,
         [allCryptoApi.reducerPath]: allCryptoApi.reducer,
         [walletApi.reducerPath]: walletApi.reducer,
-        [transactionApi.reducerPath]: transactionApi.reducer
+        [transactionApi.reducerPath]: transactionApi.reducer,
+        [swapApi.reducerPath]: swapApi.reducer
     },
     middleware: (getDefault) =>
         getDefault({
             serializableCheck: false,
-        }).concat(authApi.middleware, allCryptoApi.middleware, walletApi.middleware, transactionApi.middleware),
+        }).concat(authApi.middleware, allCryptoApi.middleware, walletApi.middleware, transactionApi.middleware, swapApi.middleware),
 
 });
 

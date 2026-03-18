@@ -19,7 +19,8 @@ exports.handleZodError = (res: Response, error: any) => {
 exports.getCoinBalance = async (
     walletId: string,
     coinSymbol: string,
-    upToDate?: Date
+    upToDate?: Date,
+    prismaClient: any = prisma
 ): Promise<number> => {
 
     const dateCondition = upToDate
@@ -28,7 +29,7 @@ exports.getCoinBalance = async (
         }
         : {}; // Якщо upToDate не передано, то брать всі транзакції
 
-    const transactions = await prisma.transactions.findMany({
+    const transactions = await prismaClient.transactions.findMany({
         where: {
             walletId,
             coinSymbol,

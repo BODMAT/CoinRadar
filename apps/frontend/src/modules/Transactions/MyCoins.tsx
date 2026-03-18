@@ -79,7 +79,7 @@ export function MyCoins() {
 
     return (
         <div className="p-4">
-            <div className="w-full flex justify-between gap-10 mb-5 items-center">
+            <div className="w-full flex justify-between gap-10 mb-5 items-center max-[350px]:flex-col">
                 <h1 className="fontTitle text-2xl font-bold text-(--color-text)">My coins:</h1>
                 <div className="w-48">
                     <Select
