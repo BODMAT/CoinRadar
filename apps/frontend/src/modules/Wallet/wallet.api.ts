@@ -40,7 +40,9 @@ export const walletApi = createApi({
                 try {
                     const { data } = await queryFulfilled;
                     dispatch(setWalletsList(data));
-                } catch { }
+                } catch (error) {
+                    console.error("Failed to sync wallets list from getWallets", error);
+                }
             },
         }),
         createWallet: builder.mutation<Wallet, WalletCreate>({

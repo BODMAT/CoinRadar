@@ -8,6 +8,22 @@ import { ChangeTransactionPopup } from "./ChangeTransactionPopup";
 import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
 import { formatPrice, formatQuantity } from "../../utils/functions";
 
+const extractApiErrorMessage = (error: unknown, fallback = "Failed"): string => {
+    if (
+        typeof error === "object" &&
+        error !== null &&
+        "data" in error &&
+        typeof (error as { data?: unknown }).data === "object" &&
+        (error as { data?: unknown }).data !== null &&
+        "error" in ((error as { data?: unknown }).data as Record<string, unknown>) &&
+        typeof ((error as { data?: unknown }).data as Record<string, unknown>).error === "string"
+    ) {
+        return ((error as { data?: unknown }).data as { error: string }).error;
+    }
+
+    return fallback;
+};
+
 export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) {
     const dispatch = useAppDispatch();
     const selectedWalletId = useAppSelector((state) => state.selectedWallet.selectedWalletId);
@@ -34,8 +50,6 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
     const { data: allCoins } = useGetAllCoinsQuery();
     const [deleteTransaction, { isLoading: isDeleting }] = useDeleteTransactionMutation();
 
-    if (!selectedWalletId) return null;
-
     const rawTransactions = isSpecificCoin ? coinTransactionsData : allTransactionsData?.data;
     const meta = allTransactionsData?.meta;
 
@@ -56,19 +70,24 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
     const skeletons = Array(limit).fill(0);
 
     const handleDeleteTransaction = async (transactionId: string) => {
+        if (!selectedWalletId) return;
+
         try {
             await deleteTransaction({ walletId: selectedWalletId, transactionId }).unwrap();
             dispatch(closePopup());
             setTimeout(() => dispatch(openPopup({ title: "Success", children: "Transaction deleted!" })), 300);
-        } catch (error: any) {
+        } catch (error: unknown) {
             dispatch(closePopup());
-            setTimeout(() => dispatch(openPopup({ title: "Failure", children: error.data?.error || "Failed" })), 300);
+            const message = extractApiErrorMessage(error);
+            setTimeout(() => dispatch(openPopup({ title: "Failure", children: message })), 300);
         }
     };
 
     const handleChangeTransaction = (transactionId: string) => {
         dispatch(openPopup({ title: "Edit transaction", children: <ChangeTransactionPopup transactionId={transactionId} /> }));
     }
+
+    if (!selectedWalletId) return null;
 
     return (
         <>

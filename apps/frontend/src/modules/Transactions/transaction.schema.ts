@@ -1,7 +1,6 @@
 import { z } from "zod";
 
-const decimalSchema = z.union([z.string(), z.number(), z.any()])
-    .transform((value: string | number | any) => Number(value));
+const decimalSchema = z.coerce.number();
 
 const TransactionResponseSchema = z.object({
     id: z.string().uuid(),

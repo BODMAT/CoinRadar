@@ -33,7 +33,7 @@ const loadInitialState = (): UserSafe | null => {
                     localStorage.removeItem(STORAGE_KEY);
                     return null;
                 }
-            } catch (e) {
+            } catch {
                 localStorage.removeItem(STORAGE_KEY);
                 return null;
             }

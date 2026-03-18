@@ -50,7 +50,9 @@ export const transactionApi = createApi({
                 try {
                     await queryFulfilled;
                     dispatch(walletApi.util.invalidateTags(['Wallet']));
-                } catch { }
+                } catch (error) {
+                    console.error("Failed to invalidate wallet tags after createTransaction", error);
+                }
             }
         }),
 
@@ -102,7 +104,9 @@ export const transactionApi = createApi({
                 try {
                     await queryFulfilled;
                     dispatch(walletApi.util.invalidateTags(['Wallet']));
-                } catch { }
+                } catch (error) {
+                    console.error("Failed to invalidate wallet tags after deleteTransaction", error);
+                }
             }
         }),
 
@@ -126,7 +130,9 @@ export const transactionApi = createApi({
                 try {
                     await queryFulfilled;
                     dispatch(walletApi.util.invalidateTags(['Wallet']));
-                } catch { }
+                } catch (error) {
+                    console.error("Failed to invalidate wallet tags after updateTransaction", error);
+                }
             }
         }),
 

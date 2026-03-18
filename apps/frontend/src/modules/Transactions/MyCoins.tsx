@@ -80,7 +80,7 @@ export function MyCoins() {
     return (
         <div className="p-4">
             <div className="w-full flex justify-between gap-10 mb-5 items-center">
-                <h1 className="fontTitle text-2xl font-bold text-white">My coins:</h1>
+                <h1 className="fontTitle text-2xl font-bold text-(--color-text)">My coins:</h1>
                 <div className="w-48">
                     <Select
                         options={SortOptions}
@@ -108,7 +108,7 @@ export function MyCoins() {
                         <button
                             key={coin.coinSymbol}
                             onClick={handleOpenCoinPopup(coin.coinSymbol)}
-                            className="w-full cursor-pointer grid grid-cols-5 max-[460px]:grid-cols-4 items-center border-b border-gray-700/10 py-3 px-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left text-white"
+                            className="w-full cursor-pointer grid grid-cols-5 max-[460px]:grid-cols-4 items-center border-b border-gray-700/10 py-3 px-2 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left text-(--color-text)"
                         >
                             <div className="flex items-center gap-3">
                                 <img

@@ -28,9 +28,7 @@ export function Graph({
     const fillColor = isUp ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)';
 
     const data = {
-        labels: prices.map((_, __, ___) => {
-            return "";
-        }),
+        labels: prices.map(() => ""),
 
         datasets: [
             {

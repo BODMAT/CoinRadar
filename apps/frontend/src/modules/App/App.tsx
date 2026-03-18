@@ -1,6 +1,6 @@
 import { useApplyTheme } from "../../hooks/useApplyTheme";
 import { PopUp } from "../../portals/PopUp.portal";
-import { ScrollableBackground } from "../ScrollableBackground/RotatingArrows";
+import { Background } from "../Background/Background";
 import { FixedFooter } from "../FixedFooter/FixedFooter";
 import { FixedHeader } from "../FixedHeader/FixedHeader";
 import { HomePage } from "../HomePage/HomePage";
@@ -42,7 +42,7 @@ export function App() {
       {/* All PopUps in one portal */}
       <PopUp />
 
-      <ScrollableBackground />
+      <Background />
     </div>
   );
 }

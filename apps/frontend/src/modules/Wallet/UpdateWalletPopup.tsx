@@ -14,6 +14,17 @@ export function UpdateWalletPopup() {
         { isLoading, isError, error, isSuccess }
     ] = useUpdateWalletMutation();
 
+    const errorMessage =
+        typeof error === "object" &&
+            error !== null &&
+            "data" in error &&
+            typeof (error as { data?: unknown }).data === "object" &&
+            (error as { data?: unknown }).data !== null &&
+            "error" in ((error as { data?: unknown }).data as Record<string, unknown>) &&
+            typeof ((error as { data?: unknown }).data as Record<string, unknown>).error === "string"
+            ? ((error as { data?: unknown }).data as { error: string }).error
+            : "Unknown error";
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -55,7 +66,7 @@ export function UpdateWalletPopup() {
 
             {isError && (
                 <p className="text-red-500">
-                    Error: {(error as any)?.data?.error || 'Unknown error'}
+                    Error: {errorMessage}
                 </p>
             )}
 
