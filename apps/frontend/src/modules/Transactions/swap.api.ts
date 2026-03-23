@@ -1,5 +1,4 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "../../store";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import { walletApi } from "../Wallet/wallet.api";
 import { transactionApi } from "./transaction.api";
 import {
@@ -9,24 +8,11 @@ import {
     SwapResponseSchema,
     SwapSettingsSchema,
 } from "./swap.schema";
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://coinradar-wmzg.onrender.com/api/";
+import { baseQueryWithReauth } from "../../api/baseQueryWithReauth";
 
 export const swapApi = createApi({
     reducerPath: "swapApi",
-    baseQuery: fetchBaseQuery({
-        baseUrl: BASE_URL,
-        prepareHeaders: (headers, { getState }) => {
-            const state = getState() as RootState;
-            const token = state.auth.user?.token;
-
-            if (token) {
-                headers.set("authorization", `Bearer ${token}`);
-            }
-
-            return headers;
-        },
-    }),
+    baseQuery: baseQueryWithReauth,
     tagTypes: ["SwapSettings"],
     endpoints: (builder) => ({
         createSwap: builder.mutation<SwapResponse, { walletId: string; data: CreateSwapDto }>({

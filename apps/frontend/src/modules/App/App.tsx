@@ -7,6 +7,7 @@ import { HomePage } from "../HomePage/HomePage";
 import { AllCrypto } from "../AllCrypto/AllCrypto";
 import { lazy, Suspense } from "react";
 import { useOnScreen } from "../../hooks/useOnScreen";
+import { useGetCurrentUserQuery } from "../Auth/auth.api";
 
 const Wallet = lazy(() =>
   import("../Wallet/Wallet").then((module) => ({
@@ -16,6 +17,7 @@ const Wallet = lazy(() =>
 
 export function App() {
   useApplyTheme();
+  useGetCurrentUserQuery();
   const [ref, isVisible] = useOnScreen<HTMLDivElement>("200px");
   return (
     <div className="relative">

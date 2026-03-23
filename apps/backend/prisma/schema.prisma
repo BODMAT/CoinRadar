@@ -50,11 +50,29 @@ model Wallet {
 }
 
 model User {
-  id       String   @id @default(uuid())
-  login    String   @unique
-  password String
-  email    String?  @unique
-  wallets  Wallet[]
+  id            String         @id @default(uuid())
+  login         String         @unique
+  password      String?
+  email         String?        @unique
+  provider      String         @default("local")
+  providerId    String?        @unique
+  wallets       Wallet[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id                 String    @id @default(uuid())
+  userId             String
+  tokenHash          String    @unique
+  expiresAt          DateTime
+  createdAt          DateTime  @default(now())
+  revokedAt          DateTime?
+  replacedByTokenHash String?
+  userAgent          String?
+  ip                 String?
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model SwapSettings {

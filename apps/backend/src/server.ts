@@ -10,13 +10,16 @@ const walletRouter = require('./router/walletRouter');
 const app: Express = express();
 const PORT = process.env.PORT || 4000;
 
-const allowedOrigins = [
-    'http://localhost:5173',
-    'https://bodmat.github.io'
-];
+const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173')
+    .split(',')
+    .map((origin: string) => origin.trim())
+    .filter(Boolean);
 
 app.use(express.json());
-app.use(cors({ origin: allowedOrigins }));
+app.use(cors({
+    origin: allowedOrigins,
+    credentials: true,
+}));
 
 // Routers
 app.use('/api/auth', authRouter);
