@@ -119,12 +119,22 @@ export function WatchTransactionsPopup({ coinSymbol }: { coinSymbol?: string }) 
                     ))
                 ) : (
                     transactionsToShow.map(transaction => (
-                        <div key={transaction.id} className={`text-[15px] text-center max-md:text-[12px] grid grid-cols-7 max-[560px]:grid-cols-6 max-[460px]:grid-cols-5 items-center content-center gap-1 max-md:gap-px p-4 m-1 border-b border-gray-300 rounded-xl ${transaction.buyOrSell === "buy" ? "bg-green-400/20" : "bg-red-400/20"}`}>
+                        <div
+                            key={transaction.id}
+                            className={`text-[15px] text-center max-md:text-[12px] grid grid-cols-7 max-[560px]:grid-cols-6 max-[460px]:grid-cols-5 items-center content-center gap-1 max-md:gap-px p-4 m-1 border-b border-gray-300 rounded-xl ${transaction.buyOrSell === "buy" ? "bg-green-400/20" : "bg-red-400/20"} ${transaction.swapGroupId ? "ring-1 ring-sky-400/40" : ""}`}
+                        >
                             <div className="flex gap-2 items-center mx-auto">
                                 <img src={transaction.image} alt={transaction.name} className="w-8 h-8 max-[385px]:hidden rounded-full" />
                                 <span className="uppercase font-bold">{transaction.coinSymbol}</span>
                             </div>
-                            <div className="max-[460px]:hidden uppercase font-bold text-xs">{transaction.buyOrSell}</div>
+                            <div className="max-[460px]:hidden uppercase font-bold text-xs flex items-center justify-center gap-2">
+                                <span>{transaction.buyOrSell}</span>
+                                {transaction.swapGroupId && (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300 border border-sky-400/30">
+                                        SWAP
+                                    </span>
+                                )}
+                            </div>
                             <div>{formatQuantity(transaction.quantity)}</div>
                             <div>{formatPrice(transaction.price)}</div>
 

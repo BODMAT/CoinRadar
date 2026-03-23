@@ -7,6 +7,16 @@ const { CreateSwapSchema, UpdateSwapSettingsSchema } = require('../models/SwapSc
 const { handleZodError, getCoinBalance } = require('../utils/helpers');
 
 type TransactionPayload = Prisma.TransactionsGetPayload<{}>;
+const MAX_SWAP_TRANSACTION_RETRIES = 3;
+
+const isRetryableSerializationError = (error: unknown): boolean => {
+    if (!error || typeof error !== 'object') return false;
+
+    const candidate = error as { code?: string; message?: string };
+    const message = (candidate.message || '').toLowerCase();
+
+    return candidate.code === 'P2034' || message.includes('serialize') || message.includes('deadlock');
+};
 
 const formatTransaction = (tx: TransactionPayload) => {
     return {
@@ -26,6 +36,17 @@ exports.createSwap = async (req: Request, res: Response) => {
             return handleZodError(res, validationResult.error);
         }
 
+        const swapSettings = await prisma.swapSettings.findUnique({
+            where: { walletId },
+            select: { swapEnabled: true },
+        });
+
+        if (!swapSettings?.swapEnabled) {
+            return res.status(403).json({
+                error: 'Swap is disabled for this wallet. Enable it in swap settings.',
+            });
+        }
+
         const {
             fromCoin,
             fromQuantity,
@@ -43,60 +64,78 @@ exports.createSwap = async (req: Request, res: Response) => {
         const swapGroupId = crypto.randomUUID();
         const createdAtData = createdAt ? { createdAt } : {};
 
-        let sellTx: TransactionPayload;
-        let buyTx: TransactionPayload;
+        let sellTx: TransactionPayload | null = null;
+        let buyTx: TransactionPayload | null = null;
 
-        try {
-            const transactionResult = await prisma.$transaction(async (tx: any) => {
-                const balanceAtTime = await getCoinBalance(walletId, fromCoin, createdAt, tx);
+        for (let attempt = 1; attempt <= MAX_SWAP_TRANSACTION_RETRIES; attempt += 1) {
+            try {
+                const transactionResult = await prisma.$transaction(async (tx: any) => {
+                    const balanceAtTime = await getCoinBalance(walletId, fromCoin, createdAt, tx);
 
-                if (balanceAtTime < fromQuantity) {
-                    throw new Error(
-                        `INSUFFICIENT_BALANCE: Insufficient funds. Available balance was ${balanceAtTime} ${fromCoin.toUpperCase()} before swap time, but tried to swap ${fromQuantity}.`
-                    );
+                    if (balanceAtTime < fromQuantity) {
+                        throw new Error(
+                            `INSUFFICIENT_BALANCE: Insufficient funds. Available balance was ${balanceAtTime} ${fromCoin.toUpperCase()} up to swap time, but tried to swap ${fromQuantity}.`
+                        );
+                    }
+
+                    const createdSellTx = await tx.transactions.create({
+                        data: {
+                            walletId,
+                            coinSymbol: fromCoin,
+                            buyOrSell: 'sell',
+                            price: fromPrice,
+                            quantity: fromQuantity,
+                            swapGroupId,
+                            ...createdAtData,
+                        },
+                    });
+
+                    const createdBuyTx = await tx.transactions.create({
+                        data: {
+                            walletId,
+                            coinSymbol: toCoin,
+                            buyOrSell: 'buy',
+                            price: toPrice,
+                            quantity: toQuantity,
+                            swapGroupId,
+                            ...createdAtData,
+                        },
+                    });
+
+                    return {
+                        sell: createdSellTx,
+                        buy: createdBuyTx,
+                    };
+                }, {
+                    isolationLevel: 'Serializable',
+                });
+
+                sellTx = transactionResult.sell as TransactionPayload;
+                buyTx = transactionResult.buy as TransactionPayload;
+                break;
+            } catch (error: any) {
+                if (error instanceof Error && error.message.startsWith('INSUFFICIENT_BALANCE:')) {
+                    return res.status(400).json({
+                        error: error.message.replace('INSUFFICIENT_BALANCE: ', ''),
+                    });
                 }
 
-                const createdSellTx = await tx.transactions.create({
-                    data: {
-                        walletId,
-                        coinSymbol: fromCoin,
-                        buyOrSell: 'sell',
-                        price: fromPrice,
-                        quantity: fromQuantity,
-                        swapGroupId,
-                        ...createdAtData,
-                    },
-                });
+                if (isRetryableSerializationError(error)) {
+                    if (attempt < MAX_SWAP_TRANSACTION_RETRIES) {
+                        continue;
+                    }
 
-                const createdBuyTx = await tx.transactions.create({
-                    data: {
-                        walletId,
-                        coinSymbol: toCoin,
-                        buyOrSell: 'buy',
-                        price: toPrice,
-                        quantity: toQuantity,
-                        swapGroupId,
-                        ...createdAtData,
-                    },
-                });
+                    return res.status(409).json({
+                        error: 'Swap conflicted with another operation. Please retry.',
+                    });
+                }
 
-                return {
-                    sell: createdSellTx,
-                    buy: createdBuyTx,
-                };
-            }, {
-                isolationLevel: 'Serializable',
-            });
-
-            sellTx = transactionResult.sell as TransactionPayload;
-            buyTx = transactionResult.buy as TransactionPayload;
-        } catch (error: any) {
-            if (error instanceof Error && error.message.startsWith('INSUFFICIENT_BALANCE:')) {
-                return res.status(400).json({
-                    error: error.message.replace('INSUFFICIENT_BALANCE: ', ''),
-                });
+                throw error;
             }
-            throw error;
+        }
+
+        if (!sellTx || !buyTx) {
+            return res.status(500).json({ error: 'Swap transaction failed unexpectedly.' });
         }
 
         return res.status(201).json({

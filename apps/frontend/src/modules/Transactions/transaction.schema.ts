@@ -7,6 +7,7 @@ const TransactionResponseSchema = z.object({
     buyOrSell: z.enum(["buy", "sell"]),
 
     coinSymbol: z.string(),
+    swapGroupId: z.string().uuid().nullable().optional(),
 
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),

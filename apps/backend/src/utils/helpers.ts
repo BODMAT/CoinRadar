@@ -25,7 +25,7 @@ exports.getCoinBalance = async (
 
     const dateCondition = upToDate
         ? {
-            createdAt: { lt: upToDate } // < upToDate
+            createdAt: { lte: upToDate }
         }
         : {}; // Якщо upToDate не передано, то брать всі транзакції
 
@@ -35,7 +35,8 @@ exports.getCoinBalance = async (
             coinSymbol,
             ...dateCondition
         },
-        select: { buyOrSell: true, quantity: true }
+        select: { buyOrSell: true, quantity: true },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }]
     });
 
     let balance = 0;
@@ -124,3 +125,4 @@ exports.getStartDate = (range: string): Date => {
     }
     return now;
 };
+
