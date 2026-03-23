@@ -88,7 +88,11 @@ const signRefreshToken = (userId: string): string => {
     }
 
     return jwt.sign(
-        { userId, type: 'refresh' },
+        {
+            userId,
+            type: 'refresh',
+            jti: crypto.randomUUID(),
+        },
         JWT_REFRESH_SECRET,
         { expiresIn: `${REFRESH_EXPIRES_DAYS}d` }
     );

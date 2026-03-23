@@ -1,51 +1,38 @@
-name: Build and Deploy Frontend to GitHub Pages
+name: Deploy Frontend to GitHub Pages
 
 on:
-  push:
-    branches:
-      - master
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
 
 jobs:
-  build_and_deploy: # Перейменуємо job для кращої ясності
+  build_and_deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'master' }}
     runs-on: ubuntu-latest
-    
-    steps:
-      # Крок 1: Завантажуємо код з репозиторію
-      - name: Checkout code
-        uses: actions/checkout@v4 # Використовуємо останню стабільну версію
 
-      # Крок 2: Налаштовуємо Node.js середовище
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm' # Включаємо кешування для npm
+          cache: 'npm'
 
-      # Крок 3: Встановлюємо залежності (використовуємо ci з налаштуванням --workspaces)
       - name: Install dependencies
-        # У Turborepo, краще використовувати npm install або npm ci напряму,
-        # якщо npm@10.8.1 (що підтримує workspaces) використовується як packageManager.
         run: npm ci
 
-      # Крок Додатковий: ГЕНЕРАЦІЯ КЛІЄНТА PRISMA (Критично важливо для CI/CD)
-      - name: Generate Prisma Client Types
-        # Переходимо в каталог бекенда, де знаходиться prisma/schema.prisma
-        run: npx prisma generate
-        working-directory: ./apps/backend/ # 💡 Обов'язково вказуємо каталог бекенда
+      - name: Build frontend
+        run: npm run build --filter=frontend
 
-      # Крок 4: Запуск повного білду (для бекенда і фронтенда)
-      - name: Build the project (Frontend & Backend)
-        run: npm run build
-        
-      # Крок 5: Деплой на gh-pages
-      # Ми повинні вказати точний шлях до статичних файлів фронтенда!
       - name: Deploy Frontend to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          # 💡 ВИПРАВЛЕННЯ: Вказуємо шлях до білду фронтенда
-          publish_dir: ./apps/frontend/dist 
-          # 💡 ВИПРАВЛЕННЯ: Використовуємо GITHUB_TOKEN, оскільки ви використовуєте GITHUB_TOKEN, а не PAT
-          github_token: ${{ secrets.GITHUB_TOKEN }} 
+          publish_dir: ./apps/frontend/dist
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          # 💡 ДОДАТКОВО: Примушуємо actions-gh-pages генерувати .nojekyll (рекомендовано для SPA)
           enable_jekyll: true
