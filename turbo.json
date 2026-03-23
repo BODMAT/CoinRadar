@@ -13,6 +13,14 @@
     "check-types": {
       "dependsOn": ["^check-types"]
     },
+    "test": {
+      "dependsOn": ["^test"],
+      "outputs": []
+    },
+    "test:integration": {
+      "outputs": [],
+      "cache": false
+    },
     "dev": {
       "cache": false,
       "persistent": true

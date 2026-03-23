@@ -25,7 +25,7 @@ export function CoinPopup({ coin }: { coin: Coin }) {
                 </div>
 
                 <div className="">Prise: {coin.current_price}</div>
-                <div className="">ATH: {coin.ath}</div>
+                <div className="">ATH: {coin.ath ?? "N/A"}</div>
                 <div className="">Percentage 24h: {coin.price_change_percentage_24h.toFixed(2)}%</div>
             </div>
             <h3 className="font-bold text-lg">Last 7 days:</h3>

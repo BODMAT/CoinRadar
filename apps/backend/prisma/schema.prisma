@@ -11,8 +11,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  //! 7.0.0 - не стабільна версія тому залишив (6.19.0) без prisma.config.ts 
-  //! 7.0.0 - (a high-severity vulnerability in the 'hono' package)
+  //! 7.0.0 - не стабільна версія тому залишив (6.19.0) без prisma.config.ts (a high-severity vulnerability in the 'hono' package)
 }
 
 enum BuyOrSell {
@@ -25,6 +24,7 @@ model Transactions {
   walletId String
 
   coinSymbol String
+  swapGroupId String?
 
   buyOrSell BuyOrSell
   price     Decimal   @db.Decimal(30, 10)
@@ -44,14 +44,41 @@ model Wallet {
   user      User     @relation(fields: [userId], references: [id])
 
   transactions Transactions[]
+  swapSettings SwapSettings?
 
   @@unique([name, userId]) //Композитний унікальний індекс - в межах одного користувача (userId)
 }
 
 model User {
-  id       String   @id @default(uuid())
-  login    String   @unique
-  password String
-  email    String?  @unique
-  wallets  Wallet[]
+  id            String         @id @default(uuid())
+  login         String         @unique
+  password      String?
+  email         String?        @unique
+  provider      String         @default("local")
+  providerId    String?        @unique
+  wallets       Wallet[]
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id                 String    @id @default(uuid())
+  userId             String
+  tokenHash          String    @unique
+  expiresAt          DateTime
+  createdAt          DateTime  @default(now())
+  revokedAt          DateTime?
+  replacedByTokenHash String?
+  userAgent          String?
+  ip                 String?
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SwapSettings {
+  id          String   @id @default(uuid())
+  walletId    String   @unique
+  swapEnabled Boolean  @default(false)
+  stableCoins String[] @default(["usdt", "usdc"])
+  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
 }

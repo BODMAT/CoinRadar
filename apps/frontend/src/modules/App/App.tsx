@@ -1,12 +1,13 @@
 import { useApplyTheme } from "../../hooks/useApplyTheme";
 import { PopUp } from "../../portals/PopUp.portal";
-import { ScrollableBackground } from "../ScrollableBackground/RotatingArrows";
+import { Background } from "../Background/Background";
 import { FixedFooter } from "../FixedFooter/FixedFooter";
 import { FixedHeader } from "../FixedHeader/FixedHeader";
 import { HomePage } from "../HomePage/HomePage";
 import { AllCrypto } from "../AllCrypto/AllCrypto";
 import { lazy, Suspense } from "react";
 import { useOnScreen } from "../../hooks/useOnScreen";
+import { useGetCurrentUserQuery } from "../Auth/auth.api";
 
 const Wallet = lazy(() =>
   import("../Wallet/Wallet").then((module) => ({
@@ -16,6 +17,7 @@ const Wallet = lazy(() =>
 
 export function App() {
   useApplyTheme();
+  useGetCurrentUserQuery();
   const [ref, isVisible] = useOnScreen<HTMLDivElement>("200px");
   return (
     <div className="relative">
@@ -42,7 +44,7 @@ export function App() {
       {/* All PopUps in one portal */}
       <PopUp />
 
-      <ScrollableBackground />
+      <Background />
     </div>
   );
 }

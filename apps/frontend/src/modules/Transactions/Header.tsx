@@ -3,6 +3,7 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { openPopup } from "../../portals/popup.slice";
 import { ChooseCoinPopup } from "./ChooseCoinPopup";
 import { WatchTransactionsPopup } from "./WatchTransactionsPopup";
+import { SwapSettingsPopup } from "./SwapSettingsPopup";
 
 import { useGetWalletQuery } from "../Wallet/wallet.api";
 import { useGetAllTransactionsGroupByCoinSymbolQuery } from "./transaction.api";
@@ -69,8 +70,16 @@ export function Header() {
         dispatch(openPopup({ title: "Transactions", children: <WatchTransactionsPopup /> }));
     }
 
+    const handleOpenSwapSettingsPopup = () => {
+        if (!user) {
+            dispatch(openPopup({ title: "Failure", children: "You need to be logged in to change swap settings" }));
+            return;
+        }
+        dispatch(openPopup({ title: "Swap Settings", children: <SwapSettingsPopup /> }));
+    };
+
     return (
-        <div className="flex justify-between max-md:flex-col items-center gap-7 bg-(image:--color-background) rounded-2xl p-3">
+        <div className="flex justify-between max-lg:justify-evenly max-md:flex-col items-center gap-7 bg-(image:--color-background) rounded-2xl p-3">
             <div className="flex gap-7 items-center max-[420px]:flex-col">
 
                 <div className="flex flex-col gap-2">
@@ -113,12 +122,15 @@ export function Header() {
 
             </div>
 
-            <div className="flex gap-5 max-[420px]:flex-col">
+            <div className="flex gap-5 max-[920px]:flex-col">
                 <button disabled={!selectedWalletId} onClick={handleOpenChooseCoinPopup} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2 disabled:cursor-not-allowed">
                     Add transaction
                 </button>
                 <button disabled={!selectedWalletId} onClick={handleOpenWatchTransactionsPopup} className="max-[500px]:w-full flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2 disabled:cursor-not-allowed">
                     View transactions
+                </button>
+                <button disabled={!selectedWalletId} onClick={handleOpenSwapSettingsPopup} className="max-[500px]:w-full flex justify-center items-center text-center px-4 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[--color-text] border-[--color-text] border-2 disabled:cursor-not-allowed">
+                    Swap settings
                 </button>
             </div>
         </div>

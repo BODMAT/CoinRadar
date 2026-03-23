@@ -58,7 +58,7 @@ export function ChangeTransactionPopup({ transactionId }: { transactionId: strin
 
         setAlert(null);
 
-        let newForm = { ...form, [name]: value };
+        const newForm = { ...form, [name]: value };
 
         if (name === 'quantity') {
             newForm.total_price = (Number(value) * Number(form.price)).toString();
@@ -96,8 +96,18 @@ export function ChangeTransactionPopup({ transactionId }: { transactionId: strin
                 dispatch(openPopup({ title: "Success", children: "Transaction updated!" }));
             }, 300);
 
-        } catch (error: any) {
-            setAlert(error.data?.error || "Failed to update transaction");
+        } catch (error: unknown) {
+            const message =
+                typeof error === "object" &&
+                    error !== null &&
+                    "data" in error &&
+                    typeof (error as { data?: unknown }).data === "object" &&
+                    (error as { data?: unknown }).data !== null &&
+                    "error" in ((error as { data?: unknown }).data as Record<string, unknown>) &&
+                    typeof ((error as { data?: unknown }).data as Record<string, unknown>).error === "string"
+                    ? ((error as { data?: unknown }).data as { error: string }).error
+                    : "Failed to update transaction";
+            setAlert(message);
         }
     };
 

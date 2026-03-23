@@ -3,6 +3,7 @@ import type { Coin } from "../AllCrypto/all-crypto.schema";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closePopup, openPopup } from "../../portals/popup.slice";
 import { useCreateTransactionMutation, useGetCoinStatsQuery } from "./transaction.api";
+import { useCreateSwapMutation, useGetSwapSettingsQuery } from "./swap.api";
 import { getLocalDatetime } from "../../utils/functions";
 
 export function AddTransactionPopup({ coin }: { coin: Coin }) {
@@ -14,7 +15,12 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
         { skip: !selectedWalletId }
     );
 
-    const [createTransaction, { isLoading }] = useCreateTransactionMutation();
+    const [createTransaction, { isLoading: isCreateTransactionLoading }] = useCreateTransactionMutation();
+    const [createSwap, { isLoading: isCreateSwapLoading }] = useCreateSwapMutation();
+    const { data: swapSettings } = useGetSwapSettingsQuery(
+        selectedWalletId || "",
+        { skip: !selectedWalletId }
+    );
 
     const [form, setForm] = useState({
         quantity: "",
@@ -25,11 +31,15 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
     });
 
     const [alert, setAlert] = useState<string | null>(null);
+    const [payWithSwap, setPayWithSwap] = useState(false);
 
     if (!selectedWalletId) return null;
 
     const currentCoinInWallet = coinStats?.totalQuantity || 0;
     const averageBuyingPrice = coinStats?.avgBuyingPrice || 0;
+    const swapEnabled = swapSettings?.swapEnabled ?? false;
+    const activeStableCoin = (swapSettings?.stableCoins?.[0] || "usdt").toUpperCase();
+    const isLoading = isCreateTransactionLoading || isCreateSwapLoading;
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -38,7 +48,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
 
         setAlert(null);
 
-        let newForm = { ...form, [name]: value };
+        const newForm = { ...form, [name]: value };
 
         if (name === 'quantity') {
             newForm.total_price = (Number(value) * Number(form.price)).toString();
@@ -60,24 +70,68 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
         }
 
         try {
-            await createTransaction({
-                walletId: selectedWalletId,
-                data: {
-                    coinSymbol: coin.symbol,
-                    quantity: Number(form.quantity),
-                    price: Number(form.price),
-                    buyOrSell: form.buyOrSell,
-                    createdAt: new Date(form.createdAt)
-                }
-            }).unwrap();
+            if (form.buyOrSell === "buy" && swapEnabled && payWithSwap) {
+                const stableCoin = (swapSettings?.stableCoins?.[0] || "usdt").toLowerCase();
+                const totalToSpend = Number(form.total_price || (Number(form.quantity) * Number(form.price)).toString());
+
+                await createSwap({
+                    walletId: selectedWalletId,
+                    data: {
+                        fromCoin: stableCoin,
+                        fromQuantity: totalToSpend,
+                        fromPrice: 1,
+                        toCoin: coin.symbol.toLowerCase(),
+                        toQuantity: Number(form.quantity),
+                        toPrice: Number(form.price),
+                        createdAt: new Date(form.createdAt)
+                    }
+                }).unwrap();
+            } else if (form.buyOrSell === "sell" && swapEnabled && payWithSwap) {
+                const stableCoin = (swapSettings?.stableCoins?.[0] || "usdt").toLowerCase();
+                const stableQuantity = Number(form.total_price || (Number(form.quantity) * Number(form.price)).toString());
+
+                await createSwap({
+                    walletId: selectedWalletId,
+                    data: {
+                        fromCoin: coin.symbol.toLowerCase(),
+                        fromQuantity: Number(form.quantity),
+                        fromPrice: Number(form.price),
+                        toCoin: stableCoin,
+                        toQuantity: stableQuantity,
+                        toPrice: 1,
+                        createdAt: new Date(form.createdAt)
+                    }
+                }).unwrap();
+            } else {
+                await createTransaction({
+                    walletId: selectedWalletId,
+                    data: {
+                        coinSymbol: coin.symbol,
+                        quantity: Number(form.quantity),
+                        price: Number(form.price),
+                        buyOrSell: form.buyOrSell,
+                        createdAt: new Date(form.createdAt)
+                    }
+                }).unwrap();
+            }
 
             dispatch(closePopup());
             setTimeout(() => {
                 dispatch(openPopup({ title: "Success", children: "Transaction added!" }));
             }, 300);
 
-        } catch (error: any) {
-            setAlert(error.data?.error || "Failed to add transaction");
+        } catch (error: unknown) {
+            const message =
+                typeof error === "object" &&
+                    error !== null &&
+                    "data" in error &&
+                    typeof (error as { data?: unknown }).data === "object" &&
+                    (error as { data?: unknown }).data !== null &&
+                    "error" in ((error as { data?: unknown }).data as Record<string, unknown>) &&
+                typeof ((error as { data?: unknown }).data as Record<string, unknown>).error === "string"
+                    ? ((error as { data?: unknown }).data as { error: string }).error
+                    : "Failed to process transaction";
+            setAlert(message);
         }
     };
 
@@ -120,6 +174,25 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
                         <option value="sell">Sell</option>
                     </select>
                 </div>
+
+                {swapEnabled && (form.buyOrSell === "buy" || form.buyOrSell === "sell") && (
+                    <div className="flex items-center justify-between gap-3 p-2 border-2 border-gray-300 rounded">
+                        <label className="text-sm font-bold">
+                            {form.buyOrSell === "buy"
+                                ? `Pay with ${activeStableCoin} (Swap)`
+                                : `Receive ${activeStableCoin} (Swap)`}
+                        </label>
+                        <input
+                            type="checkbox"
+                            checked={payWithSwap}
+                            onChange={(e) => {
+                                setAlert(null);
+                                setPayWithSwap(e.target.checked);
+                            }}
+                            className="w-4 h-4 cursor-pointer"
+                        />
+                    </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                     <div className="flex flex-col gap-1">

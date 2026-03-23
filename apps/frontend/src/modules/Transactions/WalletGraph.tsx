@@ -107,7 +107,7 @@ export function WalletGraph() {
         return finalChartPoints;
 
 
-    }, [agregatedTransactions, allCoins]);
+    }, [agregatedTransactions, allCoins, userCoins]);
 
     const isGrowing = chartData.length > 1 && chartData.at(-1)!.y > chartData[0]!.y;
     const lineColor = isGrowing ? "#4caf50" : "#f44336";

@@ -1,25 +1,14 @@
-import { createApi, fetchBaseQuery, } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "../../store";
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://coinradar-wmzg.onrender.com/api/";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import type { Transaction, PaginatedTransactions, CreateTransaction } from "./transaction.schema";
 import { PaginatedTransactionsSchema, TransactionResponseSchema, TransactionResponseArraySchema } from "./transaction.schema";
 import type { CoinForChart, CoinInfo } from "./coinInfo.schema";
 import { CoinForChartArraySchema, CoinInfoArraySchema, CoinInfoSchema } from "./coinInfo.schema";
 import { walletApi } from "../Wallet/wallet.api";
+import { baseQueryWithReauth } from "../../api/baseQueryWithReauth";
 
 export const transactionApi = createApi({
     reducerPath: "transactionApi",
-    baseQuery: fetchBaseQuery({
-        baseUrl: BASE_URL,
-        prepareHeaders: (headers, { getState }) => {
-            const state = getState() as RootState;
-            const token = state.auth.user?.token;
-            if (token) {
-                headers.set('authorization', `Bearer ${token}`);
-            }
-            return headers;
-        },
-    }),
+    baseQuery: baseQueryWithReauth,
     tagTypes: ["Transaction"],
     endpoints: (builder) => ({
         getTransactions: builder.query<Transaction[], string>({
@@ -50,7 +39,9 @@ export const transactionApi = createApi({
                 try {
                     await queryFulfilled;
                     dispatch(walletApi.util.invalidateTags(['Wallet']));
-                } catch { }
+                } catch (error) {
+                    console.error("Failed to invalidate wallet tags after createTransaction", error);
+                }
             }
         }),
 
@@ -102,7 +93,9 @@ export const transactionApi = createApi({
                 try {
                     await queryFulfilled;
                     dispatch(walletApi.util.invalidateTags(['Wallet']));
-                } catch { }
+                } catch (error) {
+                    console.error("Failed to invalidate wallet tags after deleteTransaction", error);
+                }
             }
         }),
 
@@ -126,7 +119,9 @@ export const transactionApi = createApi({
                 try {
                     await queryFulfilled;
                     dispatch(walletApi.util.invalidateTags(['Wallet']));
-                } catch { }
+                } catch (error) {
+                    console.error("Failed to invalidate wallet tags after updateTransaction", error);
+                }
             }
         }),
 

@@ -19,22 +19,24 @@ exports.handleZodError = (res: Response, error: any) => {
 exports.getCoinBalance = async (
     walletId: string,
     coinSymbol: string,
-    upToDate?: Date
+    upToDate?: Date,
+    prismaClient: any = prisma
 ): Promise<number> => {
 
     const dateCondition = upToDate
         ? {
-            createdAt: { lt: upToDate } // < upToDate
+            createdAt: { lte: upToDate }
         }
         : {}; // Якщо upToDate не передано, то брать всі транзакції
 
-    const transactions = await prisma.transactions.findMany({
+    const transactions = await prismaClient.transactions.findMany({
         where: {
             walletId,
             coinSymbol,
             ...dateCondition
         },
-        select: { buyOrSell: true, quantity: true }
+        select: { buyOrSell: true, quantity: true },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }]
     });
 
     let balance = 0;
@@ -123,3 +125,4 @@ exports.getStartDate = (range: string): Date => {
     }
     return now;
 };
+

@@ -1,25 +1,12 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import type { RootState } from "../../store";
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://coinradar-wmzg.onrender.com/api/";
+import { createApi } from "@reduxjs/toolkit/query/react";
 import type { Wallet, WalletCreate, WalletPatch } from "./wallet.schema";
 import { WalletSchema } from "./wallet.schema";
 import { setWalletsList } from "./selectedWallet.slice";
+import { baseQueryWithReauth } from "../../api/baseQueryWithReauth";
 
 export const walletApi = createApi({
     reducerPath: "walletApi",
-    baseQuery: fetchBaseQuery({
-        baseUrl: BASE_URL,
-        prepareHeaders: (headers, { getState }) => {
-            const state = getState() as RootState;
-            const token = state.auth.user?.token;
-
-            if (token) {
-                headers.set('authorization', `Bearer ${token}`);
-            }
-
-            return headers;
-        },
-    }),
+    baseQuery: baseQueryWithReauth,
     tagTypes: ["Wallet"],
 
     endpoints: (builder) => ({
@@ -40,7 +27,9 @@ export const walletApi = createApi({
                 try {
                     const { data } = await queryFulfilled;
                     dispatch(setWalletsList(data));
-                } catch { }
+                } catch (error) {
+                    console.error("Failed to sync wallets list from getWallets", error);
+                }
             },
         }),
         createWallet: builder.mutation<Wallet, WalletCreate>({

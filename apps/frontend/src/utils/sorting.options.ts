@@ -1,3 +1,6 @@
+type StyleBase = Record<string, unknown>;
+type StyleState = { isFocused: boolean };
+
 export const SortOptions = [
     { value: "sort", label: "Default sort" },
     { value: "total_price", label: "Total price" },
@@ -7,7 +10,7 @@ export const SortOptions = [
 
 
 export const styles = (theme: "dark" | "light") => ({
-    control: (base: any) => ({
+    control: (base: StyleBase) => ({
         ...base,
         cursor: "pointer",
         backgroundColor: "transparent",
@@ -21,15 +24,15 @@ export const styles = (theme: "dark" | "light") => ({
             borderColor: theme === "dark" ? "#aaa" : "#333",
         },
     }),
-    singleValue: (base: any) => ({
+    singleValue: (base: StyleBase) => ({
         ...base,
         color: theme === "dark" ? "#fff" : "#000",
     }),
-    menu: (base: any) => ({
+    menu: (base: StyleBase) => ({
         ...base,
         backgroundColor: theme === "dark" ? "#222" : "#eee",
     }),
-    option: (base: any, state: any) => ({
+    option: (base: StyleBase, state: StyleState) => ({
         ...base,
         backgroundColor: state.isFocused
             ? theme === "dark"
@@ -41,7 +44,7 @@ export const styles = (theme: "dark" | "light") => ({
         color: theme === "dark" ? "#fff" : "#000",
         cursor: "pointer",
     }),
-    dropdownIndicator: (base: any) => ({
+    dropdownIndicator: (base: StyleBase) => ({
         ...base,
         color: theme === "dark" ? "#fff" : "#000",
         "&:hover": {

@@ -19,6 +19,7 @@ type FormErrors = Partial<Record<CombinedFormKeys, string>>;
 
 export function AuthPopup() {
     const dispatch = useAppDispatch();
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://coinradar-wmzg.onrender.com/api/";
 
     const [isLoginMode, setIsLoginMode] = useState(true);
     const [logoutUser] = useLogoutUserMutation();
@@ -30,7 +31,6 @@ export function AuthPopup() {
     const [loginUser, { isLoading: isLoginLoading, error: loginError, isError: isLoginError }] = useLoginUserMutation();
     const [registerUser, { isLoading: isRegisterLoading, error: registerError, isError: isRegisterError }] = useRegisterUserMutation();
 
-    // const { data: currentUser } = useGetUserQuery();    
     const currentUser = useAppSelector(state => state.auth.user);
 
     const formData = isLoginMode ? loginData : registerData;
@@ -41,7 +41,6 @@ export function AuthPopup() {
     const isLoading = isLoginLoading || isRegisterLoading;
     const isError = isLoginError || isRegisterError;
     const currentError = isLoginMode ? loginError : registerError;
-
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -72,19 +71,22 @@ export function AuthPopup() {
         try {
             await currentMutation(result.data as Login | Register).unwrap();
             dispatch(closePopup());
-
         } catch (err) {
             console.error('API Error:', err);
         }
     };
 
     const serverErrorMessage = isError && currentError && 'data' in currentError
-        ? (currentError.data as { error: string })?.error || 'Невідома помилка сервера'
+        ? (currentError.data as { error: string })?.error || 'Unknown server error'
         : null;
+
+    const handleContinueWithGoogle = () => {
+        window.location.href = `${BASE_URL}auth/google/start`;
+        dispatch(closePopup());
+    };
 
     return (
         <div className="fontText w-full max-w-md mx-auto">
-
             <h2 className="fontTitle text-5xl font-bold mb-8 text-center drop-shadow-sm">
                 {isLoginMode ? 'Sign In' : 'Sign Up'}
             </h2>
@@ -96,7 +98,6 @@ export function AuthPopup() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-
                 <div className="relative group">
                     <label className="block text-sm font-semibold opacity-70 mb-2">Login Name</label>
                     <input
@@ -168,6 +169,16 @@ export function AuthPopup() {
                             : (isLoginMode ? 'Sign In' : 'Create Account')}
                     </button>
                 </div>
+
+                <button
+                    type="button"
+                    onClick={handleContinueWithGoogle}
+                    disabled={isLoading}
+                    className="w-full cursor-pointer py-3 rounded-xl font-semibold text-sm border border-white/20 
+                                     text-(--color-text) hover:bg-white/10 transition-colors disabled:opacity-60"
+                >
+                    Continue with Google
+                </button>
 
                 {currentUser && isLoginMode && (
                     <button

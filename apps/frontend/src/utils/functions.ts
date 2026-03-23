@@ -61,7 +61,7 @@ export const formatPrice = (num: number | string) => {
 
     else if (absValue < 1) {
         let maxDecimals = 4;
-        let minDecimals = 2;
+        const minDecimals = 2;
 
         if (absValue > 0 && absValue < 0.001) {
             const stringValue = absValue.toFixed(18);

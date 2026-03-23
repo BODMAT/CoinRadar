@@ -6,7 +6,7 @@ export const CoinSchema = z.object({
     name: z.string(),
     image: z.string(),
     current_price: z.number(),
-    ath: z.number(),
+    ath: z.number().nullable(),
     price_change_percentage_24h: z.preprocess(
         (val) => (typeof val === "number" ? val : 0),
         z.number()

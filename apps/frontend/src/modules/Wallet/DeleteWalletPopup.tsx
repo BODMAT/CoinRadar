@@ -15,6 +15,17 @@ export function DeleteWalletPopup() {
         { isLoading, isError, error, isSuccess }
     ] = useDeleteWalletMutation();
 
+    const errorMessage =
+        typeof error === "object" &&
+            error !== null &&
+            "data" in error &&
+            typeof (error as { data?: unknown }).data === "object" &&
+            (error as { data?: unknown }).data !== null &&
+            "error" in ((error as { data?: unknown }).data as Record<string, unknown>) &&
+            typeof ((error as { data?: unknown }).data as Record<string, unknown>).error === "string"
+            ? ((error as { data?: unknown }).data as { error: string }).error
+            : "Unknown error";
+
     const handleDelete = async () => {
         if (!selectedWalletId || isLoading) return;
 
@@ -52,7 +63,7 @@ export function DeleteWalletPopup() {
 
             {isError && (
                 <p className="text-red-500">
-                    Error: {(error as any)?.data?.error || 'Unknown error'}
+                    Error: {errorMessage}
                 </p>
             )}
 

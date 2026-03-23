@@ -18,13 +18,11 @@ export function Header() {
         skip: !user?.token,
     });
 
-    // Робить вихід навіть якщо користувач сидить на сайті весь день (Token expired)
     useEffect(() => {
         if (error) {
             if ('status' in error && error.status === 401) {
                 console.log("Token expired. Logging out...");
                 dispatch(logout());
-                // window.location.reload(); не потрібен, адже налаштований auth.slice.ts 
             }
         }
     }, [error, dispatch]);
