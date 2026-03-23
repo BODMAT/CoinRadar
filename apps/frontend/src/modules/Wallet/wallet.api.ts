@@ -1,7 +1,7 @@
 import { createApi } from "@reduxjs/toolkit/query/react";
 import type { Wallet, WalletCreate, WalletPatch } from "./wallet.schema";
 import { WalletSchema } from "./wallet.schema";
-import { setWalletsList } from "./selectedWallet.slice";
+import { addWallet, removeWallet, setWalletsList, updateWalletInList } from "./selectedWallet.slice";
 import { baseQueryWithReauth } from "../../api/baseQueryWithReauth";
 
 export const walletApi = createApi({
@@ -43,6 +43,14 @@ export const walletApi = createApi({
                 const parsedWallet = WalletSchema.parse(response);
                 return parsedWallet;
             },
+            async onQueryStarted(_, { dispatch, queryFulfilled }) {
+                try {
+                    const { data: newWallet } = await queryFulfilled;
+                    dispatch(addWallet(newWallet));
+                } catch (error) {
+                    console.error("Failed to create wallet:", error);
+                }
+            },
 
         }),
         getWallet: builder.query<Wallet, string>({
@@ -69,6 +77,15 @@ export const walletApi = createApi({
                 { type: 'Wallet' as const, id },
                 { type: 'Wallet' as const, id: 'LIST' },
             ],
+
+            async onQueryStarted(_, { dispatch, queryFulfilled }) {
+                try {
+                    const { data: updated } = await queryFulfilled;
+                    dispatch(updateWalletInList(updated));
+                } catch (error) {
+                    console.error("Failed to update wallet:", error);
+                }
+            },
         }),
         deleteWallet: builder.mutation<void, string>({
             query: (walletId) => ({
@@ -79,6 +96,14 @@ export const walletApi = createApi({
                 { type: "Wallet" as const, id: walletId },
                 { type: "Wallet" as const, id: 'LIST' },
             ],
+            async onQueryStarted(walletId, { dispatch, queryFulfilled }) {
+                try {
+                    await queryFulfilled;
+                    dispatch(removeWallet(walletId));
+                } catch (error) {
+                    console.error(`Failed to delete wallet ${walletId}:`, error);
+                }
+            },
         }),
     })
 });
