@@ -71,7 +71,7 @@ export function AllCrypto() {
         dispatch(openPopup({ title: `${coin.name} about`, children: <CoinPopup coin={coin} /> }));
     }
 
-    if (error) {
+    if (error && !allCoins) {
         return (
             <div className="py-5">
                 <CryptoMenu totalFilteredCount={0} />
@@ -99,7 +99,7 @@ export function AllCrypto() {
 
                     <div className="flex flex-col px-4 font-mono">
                         {coinsToDisplay.map((coin: Coin | undefined, index: number) => {
-                            const isSkeleton = !coin || isFetching;
+                            const isSkeleton = !coin;
                             const rank = (page - 1) * perPage + index + 1;
 
                             return (
