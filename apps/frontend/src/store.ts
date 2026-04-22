@@ -1,40 +1,49 @@
-import { configureStore, type ThunkAction, type UnknownAction } from '@reduxjs/toolkit';
-import themeReducer from './modules/FixedFooter/theme.slice';
-import { useDispatch, useSelector, useStore } from 'react-redux';
-import popupSlice from './portals/popup.slice';
-import allCryptoSlice from './modules/AllCrypto/all-crypto.slice';
-import { authApi } from './modules/Auth/auth.api';
-import { allCryptoApi } from './modules/AllCrypto/all-crypto.api';
-import { walletApi } from './modules/Wallet/wallet.api';
-import { transactionApi } from './modules/Transactions/transaction.api';
-import { swapApi } from './modules/Transactions/swap.api';
-import authReducer from './modules/Auth/auth.slice';
-import selectedWalletReducer from './modules/Wallet/selectedWallet.slice';
+import {
+  configureStore,
+  type ThunkAction,
+  type UnknownAction,
+} from "@reduxjs/toolkit";
+import themeReducer from "./modules/FixedFooter/theme.slice";
+import { useDispatch, useSelector, useStore } from "react-redux";
+import popupSlice from "./portals/popup.slice";
+import allCryptoSlice from "./modules/AllCrypto/all-crypto.slice";
+import { authApi } from "./modules/Auth/auth.api";
+import { allCryptoApi } from "./modules/AllCrypto/all-crypto.api";
+import { walletApi } from "./modules/Wallet/wallet.api";
+import { transactionApi } from "./modules/Transactions/transaction.api";
+import { swapApi } from "./modules/Transactions/swap.api";
+import authReducer from "./modules/Auth/auth.slice";
+import selectedWalletReducer from "./modules/Wallet/selectedWallet.slice";
 
 //! low coupling high cohesion (slicess + component)
 export const store = configureStore({
-    reducer: {
-        // redux + toolkit
-        auth: authReducer,
-        theme: themeReducer,
-        popup: popupSlice,
-        selectedWallet: selectedWalletReducer,
+  reducer: {
+    // redux + toolkit
+    auth: authReducer,
+    theme: themeReducer,
+    popup: popupSlice,
+    selectedWallet: selectedWalletReducer,
 
-        // trunks and async thunks
-        allCrypto: allCryptoSlice,
+    // trunks and async thunks
+    allCrypto: allCryptoSlice,
 
-        // RTK Query
-        [authApi.reducerPath]: authApi.reducer,
-        [allCryptoApi.reducerPath]: allCryptoApi.reducer,
-        [walletApi.reducerPath]: walletApi.reducer,
-        [transactionApi.reducerPath]: transactionApi.reducer,
-        [swapApi.reducerPath]: swapApi.reducer
-    },
-    middleware: (getDefault) =>
-        getDefault({
-            serializableCheck: false,
-        }).concat(authApi.middleware, allCryptoApi.middleware, walletApi.middleware, transactionApi.middleware, swapApi.middleware),
-
+    // RTK Query
+    [authApi.reducerPath]: authApi.reducer,
+    [allCryptoApi.reducerPath]: allCryptoApi.reducer,
+    [walletApi.reducerPath]: walletApi.reducer,
+    [transactionApi.reducerPath]: transactionApi.reducer,
+    [swapApi.reducerPath]: swapApi.reducer,
+  },
+  middleware: (getDefault) =>
+    getDefault({
+      serializableCheck: false,
+    }).concat(
+      authApi.middleware,
+      allCryptoApi.middleware,
+      walletApi.middleware,
+      transactionApi.middleware,
+      swapApi.middleware,
+    ),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
@@ -45,8 +54,8 @@ export const useAppDispatch = useDispatch.withTypes<AppDispatch>();
 export const useAppStore = useStore.withTypes<typeof store>();
 
 export type AppThunk<ReturnType = void> = ThunkAction<
-    ReturnType,
-    RootState,
-    unknown,
-    UnknownAction
+  ReturnType,
+  RootState,
+  unknown,
+  UnknownAction
 >;

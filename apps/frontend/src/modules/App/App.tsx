@@ -12,7 +12,7 @@ import { useGetCurrentUserQuery } from "../Auth/auth.api";
 const Wallet = lazy(() =>
   import("../Wallet/Wallet").then((module) => ({
     default: module.Wallet,
-  }))
+  })),
 );
 
 export function App() {
@@ -29,7 +29,7 @@ export function App() {
           </section>
           <section id="section2">
             <AllCrypto />
-          </section >
+          </section>
           <section id="section3" ref={ref}>
             {isVisible && (
               <Suspense fallback={<div>Loading...</div>}>

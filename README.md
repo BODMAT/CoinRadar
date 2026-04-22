@@ -3,10 +3,12 @@
 CoinRadar is a crypto portfolio tracking web application with wallet management, transaction history, and swap support.
 
 ## Stack
+
 - Frontend: React, TypeScript, Redux Toolkit, RTK Query, Tailwind CSS, Chart.js
 - Backend: Node.js, Express, TypeScript, PostgreSQL, Prisma ORM, Zod, JWT
 
 ## Key Features
+
 - Session-based authentication with HttpOnly cookies, access/refresh tokens, and refresh token rotation
 - Google OAuth sign-in with callback flow and account linking safeguards
 - Wallet management with per-user wallet isolation and access control
