@@ -11,6 +11,7 @@
     "test:backend": "turbo run test --filter=backend",
     "test:backend:int": "turbo run test:integration --filter=backend",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "check": "prettier --check \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types"
   },
   "devDependencies": {

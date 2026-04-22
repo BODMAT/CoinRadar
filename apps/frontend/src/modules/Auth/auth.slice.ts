@@ -1,27 +1,27 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { UserSafe } from './auth.schema';
-import type { RootState } from '../../store';
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { UserSafe } from "./auth.schema";
+import type { RootState } from "../../store";
 
 interface AuthState {
-    user: UserSafe | null;
+  user: UserSafe | null;
 }
 
 const initialState: AuthState = {
-    user: null,
+  user: null,
 };
 
 const authSlice = createSlice({
-    name: 'auth',
-    initialState,
-    reducers: {
-        setUserData(state, action: PayloadAction<UserSafe>) {
-            state.user = action.payload;
-        },
-
-        logout(state) {
-            state.user = null;
-        },
+  name: "auth",
+  initialState,
+  reducers: {
+    setUserData(state, action: PayloadAction<UserSafe>) {
+      state.user = action.payload;
     },
+
+    logout(state) {
+      state.user = null;
+    },
+  },
 });
 
 export const { setUserData, logout } = authSlice.actions;

@@ -11,7 +11,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  //! 7.0.0 - не стабільна версія тому залишив (6.19.0) без prisma.config.ts (a high-severity vulnerability in the 'hono' package)
 }
 
 enum BuyOrSell {
@@ -19,11 +18,11 @@ enum BuyOrSell {
   sell
 }
 
-model Transactions {
+model Transaction {
   id       String @id @default(uuid())
   walletId String
 
-  coinSymbol String
+  coinSymbol  String
   swapGroupId String?
 
   buyOrSell BuyOrSell
@@ -43,7 +42,7 @@ model Wallet {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
 
-  transactions Transactions[]
+  transactions Transaction[]
   swapSettings SwapSettings?
 
   @@unique([name, userId]) //Композитний унікальний індекс - в межах одного користувача (userId)
@@ -61,16 +60,16 @@ model User {
 }
 
 model RefreshToken {
-  id                 String    @id @default(uuid())
-  userId             String
-  tokenHash          String    @unique
-  expiresAt          DateTime
-  createdAt          DateTime  @default(now())
-  revokedAt          DateTime?
+  id                  String    @id @default(uuid())
+  userId              String
+  tokenHash           String    @unique
+  expiresAt           DateTime
+  createdAt           DateTime  @default(now())
+  revokedAt           DateTime?
   replacedByTokenHash String?
-  userAgent          String?
-  ip                 String?
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent           String?
+  ip                  String?
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
