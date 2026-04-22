@@ -1,6 +1,6 @@
-const z = require("zod");
+import { z } from "zod";
 
-const WalletSchema = z.object({
+export const WalletSchema = z.object({
   id: z.string().uuid("ID має бути UUID"),
   name: z
     .string()
@@ -15,7 +15,7 @@ const WalletSchema = z.object({
   totalRealizedPnL: z.number().optional().default(0),
 });
 
-const WalletCreateSchema = z.object({
+export const WalletCreateSchema = z.object({
   name: z
     .string()
     .trim()
@@ -23,7 +23,7 @@ const WalletCreateSchema = z.object({
     .max(20, "Назва має бути не більше 20 символів"),
 });
 
-const WalletPatchSchema = z.object({
+export const WalletPatchSchema = z.object({
   name: z
     .string()
     .trim()
@@ -32,7 +32,7 @@ const WalletPatchSchema = z.object({
     .optional(),
 });
 
-const WalletListItemResponseSchema = z.object({
+export const WalletListItemResponseSchema = z.object({
   id: z.string().uuid("ID має бути UUID"),
   name: z
     .string()
@@ -40,10 +40,3 @@ const WalletListItemResponseSchema = z.object({
     .min(1, "Назва не може бути пустою")
     .max(20, "Назва має бути не більше 20 символів"),
 });
-
-module.exports = {
-  WalletSchema,
-  WalletCreateSchema,
-  WalletPatchSchema,
-  WalletListItemResponseSchema,
-};

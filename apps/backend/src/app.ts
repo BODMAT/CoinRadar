@@ -1,11 +1,10 @@
-require("dotenv").config();
-const express = require("express");
-import type { Express, Request, Response } from "express";
-const cors = require("cors");
-const prisma = require("./prisma");
+import "dotenv/config";
+import express, { type Express, type Request, type Response } from "express";
+import cors from "cors";
+import prisma from "./prisma.js";
 
-const authRouter = require("./router/authRouter");
-const walletRouter = require("./router/walletRouter");
+import authRouter from "./router/authRouter.js";
+import walletRouter from "./router/walletRouter.js";
 
 const app: Express = express();
 
@@ -44,4 +43,4 @@ app.get("/api/status", async (_req: Request, res: Response) => {
   }
 });
 
-module.exports = { app };
+export { app };

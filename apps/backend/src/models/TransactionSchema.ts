@@ -1,10 +1,10 @@
-const z = require("zod");
+import { z } from "zod";
 
 const decimalSchema = z
   .union([z.string(), z.number(), z.any()])
   .transform((value: string | number | any) => Number(value));
 
-const TransactionResponseSchema = z.object({
+export const TransactionResponseSchema = z.object({
   id: z.string().uuid(),
   buyOrSell: z.enum(["buy", "sell"]),
 
@@ -20,7 +20,7 @@ const TransactionResponseSchema = z.object({
   walletId: z.string(),
 });
 
-const PaginatedTransactionsSchema = z.object({
+export const PaginatedTransactionsSchema = z.object({
   data: z.array(TransactionResponseSchema),
   meta: z.object({
     total: z.number(),
@@ -30,7 +30,7 @@ const PaginatedTransactionsSchema = z.object({
   }),
 });
 
-const CreateTransactionDto = z.object({
+export const CreateTransactionDto = z.object({
   buyOrSell: z.enum(["buy", "sell"]),
 
   coinSymbol: z.string().toLowerCase(),
@@ -53,9 +53,3 @@ const CreateTransactionDto = z.object({
     )
     .optional(),
 });
-
-module.exports = {
-  CreateTransactionDto,
-  TransactionResponseSchema,
-  PaginatedTransactionsSchema,
-};

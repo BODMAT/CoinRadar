@@ -1,21 +1,24 @@
 import type { Prisma } from "@prisma/client";
 import type { Request, Response } from "express";
-const crypto = require("crypto");
-const { getCoinBalance } = require("../utils/helpers");
-const prisma = require("../prisma");
-const z = require("zod");
-const {
+import crypto from "node:crypto";
+import { z } from "zod";
+import prisma from "../prisma.js";
+import {
   TransactionResponseSchema,
   CreateTransactionDto,
   PaginatedTransactionsSchema,
-} = require("../models/TransactionSchema");
-const { handleZodError, getStartDate } = require("../utils/helpers");
+} from "../models/TransactionSchema.js";
+import {
+  getCoinBalance,
+  getStartDate,
+  handleZodError,
+} from "../utils/helpers.js";
 
 const TransactionsArraySchema = z.array(TransactionResponseSchema);
-const {
+import {
   CoinInfoSchema,
   CoinForChartSchema,
-} = require("../models/CoinInfoSchema");
+} from "../models/CoinInfoSchema.js";
 
 type TransactionPayload = Prisma.TransactionGetPayload<{}>;
 type TransactionRow = {
@@ -41,9 +44,12 @@ const formatTransaction = (tx: TransactionPayload | TransactionRow) => {
 
 // ======================================================================
 
-exports.getTransactions = async (req: Request, res: Response) => {
+export const getTransactions = async (req: Request, res: Response) => {
   try {
     const { walletId } = req.params;
+    if (!walletId) {
+      return res.status(400).json({ error: "Wallet ID is required." });
+    }
 
     const transactions = await prisma.$queryRaw<TransactionRow[]>`
       SELECT
@@ -81,9 +87,13 @@ exports.getTransactions = async (req: Request, res: Response) => {
 
 // ======================================================================
 
-exports.createTransaction = async (req: Request, res: Response) => {
+export const createTransaction = async (req: Request, res: Response) => {
   try {
     const { walletId } = req.params;
+    if (!walletId) {
+      return res.status(400).json({ error: "Wallet ID is required." });
+    }
+
     const validationResult = CreateTransactionDto.safeParse({
       ...req.body,
       walletId,
@@ -95,17 +105,14 @@ exports.createTransaction = async (req: Request, res: Response) => {
 
     const { coinSymbol, buyOrSell, price, quantity, createdAt } =
       validationResult.data;
+    const txDate = createdAt ?? new Date();
 
     if (buyOrSell === "sell") {
-      const balanceAtTime = await getCoinBalance(
-        walletId,
-        coinSymbol,
-        createdAt,
-      );
+      const balanceAtTime = await getCoinBalance(walletId, coinSymbol, txDate);
 
       if (balanceAtTime < quantity) {
         return res.status(400).json({
-          error: `Insufficient funds. Available balance was ${balanceAtTime} ${coinSymbol.toUpperCase()} up to transaction time (${createdAt.toLocaleString()}), but tried to sell ${quantity}.`,
+          error: `Insufficient funds. Available balance was ${balanceAtTime} ${coinSymbol.toUpperCase()} up to transaction time (${txDate.toLocaleString()}), but tried to sell ${quantity}.`,
         });
       }
     }
@@ -130,7 +137,7 @@ exports.createTransaction = async (req: Request, res: Response) => {
         ${buyOrSell}::"BuyOrSell",
         ${price}::numeric,
         ${quantity}::numeric,
-        ${createdAt ?? new Date()},
+        ${txDate},
         NOW()
       )
       RETURNING
@@ -156,6 +163,10 @@ exports.createTransaction = async (req: Request, res: Response) => {
     //   },
     // });
 
+    if (!newTransaction) {
+      return res.status(500).json({ error: "Failed to create transaction." });
+    }
+
     const formatted = formatTransaction(newTransaction);
     const response = TransactionResponseSchema.parse(formatted);
 
@@ -174,9 +185,13 @@ exports.createTransaction = async (req: Request, res: Response) => {
 };
 
 // ======================================================================
-exports.getPaginatedTransactions = async (req: Request, res: Response) => {
+export const getPaginatedTransactions = async (req: Request, res: Response) => {
   try {
     const { walletId } = req.params;
+    if (!walletId) {
+      return res.status(400).json({ error: "Wallet ID is required." });
+    }
+
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
@@ -242,9 +257,14 @@ exports.getPaginatedTransactions = async (req: Request, res: Response) => {
 
 // ======================================================================
 
-exports.getTransaction = async (req: Request, res: Response) => {
+export const getTransaction = async (req: Request, res: Response) => {
   try {
     const { walletId, transactionId } = req.params;
+    if (!walletId || !transactionId) {
+      return res
+        .status(400)
+        .json({ error: "Wallet ID and Transaction ID are required." });
+    }
 
     const [transaction] = await prisma.$queryRaw<TransactionRow[]>`
       SELECT
@@ -283,9 +303,14 @@ exports.getTransaction = async (req: Request, res: Response) => {
 
 // ======================================================================
 
-exports.deleteTransaction = async (req: Request, res: Response) => {
+export const deleteTransaction = async (req: Request, res: Response) => {
   try {
     const { transactionId, walletId } = req.params;
+    if (!walletId || !transactionId) {
+      return res
+        .status(400)
+        .json({ error: "Wallet ID and Transaction ID are required." });
+    }
 
     const [transactionToDelete] = await prisma.$queryRaw<TransactionRow[]>`
       SELECT
@@ -383,9 +408,14 @@ exports.deleteTransaction = async (req: Request, res: Response) => {
 
 // ======================================================================
 
-exports.updateTransaction = async (req: Request, res: Response) => {
+export const updateTransaction = async (req: Request, res: Response) => {
   try {
     const { transactionId, walletId } = req.params;
+    if (!walletId || !transactionId) {
+      return res
+        .status(400)
+        .json({ error: "Wallet ID and Transaction ID are required." });
+    }
 
     const [oldTransaction] = await prisma.$queryRaw<TransactionRow[]>`
       SELECT
@@ -526,6 +556,10 @@ exports.updateTransaction = async (req: Request, res: Response) => {
     //   },
     // });
 
+    if (!updated) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
     const formatted = formatTransaction(updated);
     const validatedResponse = TransactionResponseSchema.parse(formatted);
     return res.status(200).json(validatedResponse);
@@ -539,12 +573,15 @@ exports.updateTransaction = async (req: Request, res: Response) => {
 
 // ======================================================================
 
-exports.getAllTransactionsGroupByCoinSymbol = async (
+export const getAllTransactionsGroupByCoinSymbol = async (
   req: Request,
   res: Response,
 ) => {
   try {
     const { walletId } = req.params;
+    if (!walletId) {
+      return res.status(400).json({ error: "Wallet ID is required." });
+    }
 
     const portfolio = await prisma.$queryRaw<
       {
@@ -613,11 +650,11 @@ exports.getAllTransactionsGroupByCoinSymbol = async (
 
 // ======================================================================
 
-exports.getTransactionsByCoin = async (req: Request, res: Response) => {
+export const getTransactionsByCoin = async (req: Request, res: Response) => {
   try {
     const { walletId, coinSymbol } = req.params;
 
-    if (!coinSymbol) {
+    if (!walletId || !coinSymbol) {
       return res.status(400).json({ error: "Coin symbol is required" });
     }
 
@@ -667,11 +704,11 @@ exports.getTransactionsByCoin = async (req: Request, res: Response) => {
 };
 
 // ======================================================================
-exports.getCoinStats = async (req: Request, res: Response) => {
+export const getCoinStats = async (req: Request, res: Response) => {
   try {
     const { walletId, coinSymbol } = req.params;
 
-    if (!coinSymbol) {
+    if (!walletId || !coinSymbol) {
       return res.status(400).json({ error: "Coin symbol is required" });
     }
 
@@ -740,7 +777,7 @@ exports.getCoinStats = async (req: Request, res: Response) => {
 
 // ======================================================================
 
-exports.getGroupedTransactionsForChart = async (
+export const getGroupedTransactionsForChart = async (
   req: Request,
   res: Response,
 ) => {

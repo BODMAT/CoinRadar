@@ -37,7 +37,7 @@ module.exports = async () => {
   process.env.COOKIE_SAME_SITE = process.env.COOKIE_SAME_SITE || 'lax';
   process.env.NODE_ENV = 'test';
 
-  execSync('npx prisma db push --schema=./prisma/schema.prisma', {
+  execSync('npx prisma db push --skip-generate --schema=./prisma/schema.prisma', {
     cwd: backendRoot,
     env: {
       ...process.env,

@@ -1,7 +1,7 @@
-const express = require("express");
+import express from "express";
 const transactionRouter = express.Router({ mergeParams: true });
 
-const {
+import {
   getTransactions,
   createTransaction,
   getTransaction,
@@ -12,8 +12,8 @@ const {
   getTransactionsByCoin,
   getCoinStats,
   getGroupedTransactionsForChart,
-} = require("../controllers/transactionController");
-const { protect } = require("../middleware/authMiddleware");
+} from "../controllers/transactionController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 transactionRouter.use(protect);
 
@@ -29,4 +29,4 @@ transactionRouter.get("/:transactionId", getTransaction);
 transactionRouter.patch("/:transactionId", updateTransaction);
 transactionRouter.delete("/:transactionId", deleteTransaction);
 
-module.exports = transactionRouter;
+export default transactionRouter;

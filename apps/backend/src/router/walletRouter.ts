@@ -1,18 +1,22 @@
-const express = require("express");
-import type { NextFunction, Request, Response } from "express";
-const walletRouter = express.Router();
-const transactionRouter = require("./transactionRouter");
-const swapRouter = require("./swapRouter");
-const prisma = require("../prisma");
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
+import transactionRouter from "./transactionRouter.js";
+import swapRouter from "./swapRouter.js";
+import prisma from "../prisma.js";
 
-const {
+import {
   getWallets,
   createWallet,
   getWallet,
   updateWallet,
   deleteWallet,
-} = require("../controllers/walletController");
-const { protect } = require("../middleware/authMiddleware");
+} from "../controllers/walletController.js";
+import { protect } from "../middleware/authMiddleware.js";
+
+const walletRouter = express.Router();
 
 walletRouter.use(protect);
 
@@ -28,6 +32,9 @@ walletRouter.use(
 
     if (!userId) {
       return res.status(401).json({ error: "User not authenticated" });
+    }
+    if (!walletId) {
+      return res.status(400).json({ error: "Wallet ID is required." });
     }
 
     try {
@@ -60,4 +67,4 @@ walletRouter.delete("/:walletId", deleteWallet);
 walletRouter.use("/:walletId/transactions", transactionRouter);
 walletRouter.use("/:walletId", swapRouter);
 
-module.exports = walletRouter;
+export default walletRouter;

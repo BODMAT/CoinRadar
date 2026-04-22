@@ -1,21 +1,24 @@
 import type { Request, Response } from "express";
 import type { Prisma } from "@prisma/client";
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const prisma = require("../prisma");
-const z = require("zod");
-const crypto = require("crypto");
-const {
+import bcrypt from "bcrypt";
+import crypto from "node:crypto";
+import jwt, { type SignOptions } from "jsonwebtoken";
+import { z } from "zod";
+import prisma from "../prisma.js";
+import {
   RegisterSchema,
   LoginSchema,
   UserSchema,
-} = require("../models/AuthSchema");
-const { handleZodError } = require("../utils/helpers");
+} from "../models/AuthSchema.js";
+import { handleZodError } from "../utils/helpers.js";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
-const ACCESS_TOKEN_EXPIRES = process.env.JWT_ACCESS_EXPIRES || "15m";
+const ACCESS_TOKEN_EXPIRES = (process.env.JWT_ACCESS_EXPIRES ||
+  "15m") as SignOptions["expiresIn"];
 const REFRESH_EXPIRES_DAYS = Number(process.env.JWT_REFRESH_EXPIRES_DAYS || 30);
+const REFRESH_TOKEN_EXPIRES =
+  `${REFRESH_EXPIRES_DAYS}d` as SignOptions["expiresIn"];
 const ACCESS_COOKIE_NAME = "access_token";
 const REFRESH_COOKIE_NAME = "refresh_token";
 const OAUTH_STATE_COOKIE_NAME = "oauth_state";
@@ -86,7 +89,7 @@ const signAccessToken = (userId: string, userLogin: string): string => {
   }
 
   return jwt.sign({ userId, userLogin }, JWT_SECRET, {
-    expiresIn: ACCESS_TOKEN_EXPIRES,
+    expiresIn: ACCESS_TOKEN_EXPIRES!,
   });
 };
 
@@ -104,7 +107,7 @@ const signRefreshToken = (userId: string): string => {
       jti: crypto.randomUUID(),
     },
     JWT_REFRESH_SECRET,
-    { expiresIn: `${REFRESH_EXPIRES_DAYS}d` },
+    { expiresIn: REFRESH_TOKEN_EXPIRES! },
   );
 };
 
@@ -301,7 +304,7 @@ const getGoogleProfileFromCode = async (code: string) => {
   };
 };
 
-exports.registerUser = async (req: Request, res: Response) => {
+export const registerUser = async (req: Request, res: Response) => {
   try {
     const validatedData = RegisterSchema.parse(req.body);
     const { login, password, email } = validatedData;
@@ -345,7 +348,7 @@ exports.registerUser = async (req: Request, res: Response) => {
   }
 };
 
-exports.loginUser = async (req: Request, res: Response) => {
+export const loginUser = async (req: Request, res: Response) => {
   try {
     const validatedData = LoginSchema.parse(req.body);
     const { login, password } = validatedData;
@@ -385,7 +388,7 @@ exports.loginUser = async (req: Request, res: Response) => {
   }
 };
 
-exports.startGoogleAuth = async (_req: Request, res: Response) => {
+export const startGoogleAuth = async (_req: Request, res: Response) => {
   try {
     if (!GOOGLE_CLIENT_ID || !GOOGLE_REDIRECT_URI) {
       return res.status(500).json({ error: "Google OAuth is not configured." });
@@ -413,7 +416,7 @@ exports.startGoogleAuth = async (_req: Request, res: Response) => {
   }
 };
 
-exports.googleAuthCallback = async (req: Request, res: Response) => {
+export const googleAuthCallback = async (req: Request, res: Response) => {
   try {
     const code = req.query.code as string | undefined;
     const incomingState = req.query.state as string | undefined;
@@ -506,7 +509,7 @@ exports.googleAuthCallback = async (req: Request, res: Response) => {
   }
 };
 
-exports.refreshSession = async (req: Request, res: Response) => {
+export const refreshSession = async (req: Request, res: Response) => {
   try {
     const cookies = parseCookieHeader(req.headers.cookie);
     const refreshToken = cookies[REFRESH_COOKIE_NAME];
@@ -603,7 +606,7 @@ exports.refreshSession = async (req: Request, res: Response) => {
   }
 };
 
-exports.logoutUser = async (req: Request, res: Response) => {
+export const logoutUser = async (req: Request, res: Response) => {
   try {
     const cookies = parseCookieHeader(req.headers.cookie);
     const refreshToken = cookies[REFRESH_COOKIE_NAME];
@@ -628,7 +631,7 @@ exports.logoutUser = async (req: Request, res: Response) => {
   }
 };
 
-exports.logoutAllUserSessions = async (req: Request, res: Response) => {
+export const logoutAllUserSessions = async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
     if (!userId) {
@@ -653,7 +656,7 @@ exports.logoutAllUserSessions = async (req: Request, res: Response) => {
   }
 };
 
-exports.getCurrentUser = async (req: Request, res: Response) => {
+export const getCurrentUser = async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
     if (!userId) {

@@ -1,7 +1,6 @@
 import request from "supertest";
-
-const prisma = require("../../src/prisma");
-const { app } = require("../../src/app");
+import prisma from "../../src/prisma.js";
+import { app } from "../../src/app.js";
 
 export const getApp = () => app;
 export type TestAgent = ReturnType<typeof request.agent>;

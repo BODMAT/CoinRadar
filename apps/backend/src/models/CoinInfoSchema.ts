@@ -1,6 +1,6 @@
-const z = require("zod");
+import { z } from "zod";
 
-const CoinInfoSchema = z.object({
+export const CoinInfoSchema = z.object({
   coinSymbol: z.string(),
   totalQuantity: z.number().nonnegative(),
   avgBuyingPrice: z.number().nonnegative(),
@@ -9,7 +9,7 @@ const CoinInfoSchema = z.object({
   // PNL: z.number().optional(),
 });
 
-const CoinForChartSchema = z.object({
+export const CoinForChartSchema = z.object({
   coinSymbol: z.string(),
   agregatedData: z.array(
     z.object({
@@ -20,5 +20,3 @@ const CoinForChartSchema = z.object({
   ),
   initialQuantity: z.number().nonnegative(),
 });
-
-module.exports = { CoinInfoSchema, CoinForChartSchema };

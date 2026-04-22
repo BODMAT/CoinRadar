@@ -14,6 +14,6 @@ if (!process.env.DATABASE_URL) {
 jest.setTimeout(120000);
 
 afterAll(async () => {
-  const prisma = require("../../src/prisma");
+  const prisma = require("../../src/prisma").default;
   await prisma.$disconnect();
 });

@@ -1,4 +1,4 @@
-const jwt = require("jsonwebtoken");
+import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express";
 import type { JwtPayload } from "jsonwebtoken";
 
@@ -9,7 +9,7 @@ if (!JWT_SECRET) {
   );
 }
 
-exports.protect = (req: Request, res: Response, next: NextFunction) => {
+export const protect = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.header("Authorization");
   const cookieHeader = req.header("Cookie");
 

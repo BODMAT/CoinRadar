@@ -1,9 +1,9 @@
-const z = require("zod");
-const prisma = require("../prisma");
-const { Prisma } = require("@prisma/client");
+import { Prisma } from "@prisma/client";
+import { z } from "zod";
+import prisma from "../prisma.js";
 import type { Response } from "express";
 
-exports.handleZodError = (res: Response, error: any) => {
+export const handleZodError = (res: Response, error: any) => {
   if (error instanceof z.ZodError) {
     const fieldErrors = error.flatten().fieldErrors;
     const errorMessages = Object.values(fieldErrors);
@@ -17,7 +17,7 @@ exports.handleZodError = (res: Response, error: any) => {
   }
 };
 
-exports.getCoinBalance = async (
+export const getCoinBalance = async (
   walletId: string,
   coinSymbol: string,
   upToDate?: Date,
@@ -67,7 +67,7 @@ exports.getCoinBalance = async (
   return Number(balanceRow?.balance ?? 0);
 };
 
-exports.calculateWalletStats = (
+export const calculateWalletStats = (
   transactions: any[],
 ): { invested: number; realized: number } => {
   let totalInvested = 0;
@@ -128,7 +128,7 @@ exports.calculateWalletStats = (
   };
 };
 
-exports.getStartDate = (range: string): Date => {
+export const getStartDate = (range: string): Date => {
   const now = new Date();
   switch (range) {
     case "7d":

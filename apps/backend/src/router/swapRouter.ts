@@ -1,12 +1,12 @@
-const express = require("express");
+import express from "express";
 const swapRouter = express.Router({ mergeParams: true });
 
-const {
+import {
   createSwap,
   getSwapSettings,
   updateSwapSettings,
-} = require("../controllers/swapController");
-const { protect } = require("../middleware/authMiddleware");
+} from "../controllers/swapController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 swapRouter.use(protect);
 
@@ -14,4 +14,4 @@ swapRouter.post("/swap", createSwap);
 swapRouter.get("/swap-settings", getSwapSettings);
 swapRouter.patch("/swap-settings", updateSwapSettings);
 
-module.exports = swapRouter;
+export default swapRouter;

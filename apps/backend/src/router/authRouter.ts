@@ -1,7 +1,7 @@
-const express = require("express");
+import express from "express";
 const authRouter = express.Router();
 
-const {
+import {
   registerUser,
   loginUser,
   startGoogleAuth,
@@ -10,8 +10,8 @@ const {
   logoutUser,
   logoutAllUserSessions,
   getCurrentUser,
-} = require("../controllers/authController");
-const { protect } = require("../middleware/authMiddleware");
+} from "../controllers/authController.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 authRouter.post("/register", registerUser);
 authRouter.post("/login", loginUser);
@@ -22,4 +22,4 @@ authRouter.post("/logout", logoutUser);
 authRouter.get("/me", protect, getCurrentUser);
 authRouter.post("/logout-all", protect, logoutAllUserSessions);
 
-module.exports = authRouter;
+export default authRouter;

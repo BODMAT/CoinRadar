@@ -1,5 +1,5 @@
 import request from "supertest";
-import { getApp, resetDatabase } from "../helpers/testUtils";
+import { getApp, resetDatabase } from "../helpers/testUtils.js";
 
 describe("Auth refresh rotation", () => {
   beforeEach(async () => {

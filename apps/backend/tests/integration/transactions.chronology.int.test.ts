@@ -2,7 +2,7 @@ import {
   createTransaction,
   registerAndCreateWallet,
   resetDatabase,
-} from "../helpers/testUtils";
+} from "../helpers/testUtils.js";
 
 describe("Transactions chronology", () => {
   beforeEach(async () => {

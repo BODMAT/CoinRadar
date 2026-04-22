@@ -3,9 +3,9 @@ import {
   enableSwap,
   registerAndCreateWallet,
   resetDatabase,
-} from "../helpers/testUtils";
+} from "../helpers/testUtils.js";
 
-const prisma = require("../../src/prisma");
+import prisma from "../../src/prisma.js";
 
 describe("Swap atomic/concurrency behavior", () => {
   beforeEach(async () => {

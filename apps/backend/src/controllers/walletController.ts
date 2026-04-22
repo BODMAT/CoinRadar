@@ -1,16 +1,16 @@
 import type { Request, Response } from "express";
-const prisma = require("../prisma");
-const z = require("zod");
-const {
+import { z } from "zod";
+import prisma from "../prisma.js";
+import {
   WalletSchema,
   WalletCreateSchema,
   WalletPatchSchema,
-} = require("../models/WalletSchema");
-const { handleZodError } = require("../utils/helpers");
+} from "../models/WalletSchema.js";
+import { handleZodError } from "../utils/helpers.js";
 
 const WalletsArraySchema = z.array(WalletSchema);
 
-exports.getWallets = async (req: Request, res: Response) => {
+export const getWallets = async (req: Request, res: Response) => {
   const userId = req.userId;
 
   if (!userId) {
@@ -142,7 +142,7 @@ exports.getWallets = async (req: Request, res: Response) => {
 
 //====================================================================
 
-exports.createWallet = async (req: Request, res: Response) => {
+export const createWallet = async (req: Request, res: Response) => {
   const userId = req.userId;
 
   if (!userId) {
@@ -190,12 +190,15 @@ exports.createWallet = async (req: Request, res: Response) => {
 
 //====================================================================
 
-exports.getWallet = async (req: Request, res: Response) => {
+export const getWallet = async (req: Request, res: Response) => {
   const userId = req.userId;
   const walletId = req.params.walletId;
 
   if (!userId) {
     return res.status(401).json({ error: "User not authenticated" });
+  }
+  if (!walletId) {
+    return res.status(400).json({ error: "Wallet ID is required." });
   }
 
   try {
@@ -305,12 +308,15 @@ exports.getWallet = async (req: Request, res: Response) => {
 
 //====================================================================
 
-exports.updateWallet = async (req: Request, res: Response) => {
+export const updateWallet = async (req: Request, res: Response) => {
   const userId = req.userId;
   const walletId = req.params.walletId;
 
   if (!userId) {
     return res.status(401).json({ error: "User not authenticated" });
+  }
+  if (!walletId) {
+    return res.status(400).json({ error: "Wallet ID is required." });
   }
 
   try {
@@ -320,12 +326,15 @@ exports.updateWallet = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "No fields provided for update." });
     }
 
+    const updateData = {
+      ...(validatedData.name !== undefined ? { name: validatedData.name } : {}),
+    };
+
     const updatedWallet = await prisma.wallet.update({
       where: {
         id: walletId,
-        userId: userId,
       },
-      data: validatedData,
+      data: updateData,
     });
 
     const validatedResponse = WalletSchema.parse(updatedWallet);
@@ -361,19 +370,21 @@ exports.updateWallet = async (req: Request, res: Response) => {
 
 //====================================================================
 
-exports.deleteWallet = async (req: Request, res: Response) => {
+export const deleteWallet = async (req: Request, res: Response) => {
   const userId = req.userId;
   const walletId = req.params.walletId;
 
   if (!userId) {
     return res.status(401).json({ error: "User not authenticated" });
   }
+  if (!walletId) {
+    return res.status(400).json({ error: "Wallet ID is required." });
+  }
 
   try {
     const deletedWallet = await prisma.wallet.delete({
       where: {
         id: walletId,
-        userId: userId,
       },
     });
 

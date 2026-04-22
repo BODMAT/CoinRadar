@@ -1,13 +1,13 @@
 import type { Prisma } from "@prisma/client";
 import type { Request, Response } from "express";
-const prisma = require("../prisma");
-const z = require("zod");
-const crypto = require("crypto");
-const {
+import crypto from "node:crypto";
+import { z } from "zod";
+import prisma from "../prisma.js";
+import {
   CreateSwapSchema,
   UpdateSwapSettingsSchema,
-} = require("../models/SwapSchema");
-const { handleZodError, getCoinBalance } = require("../utils/helpers");
+} from "../models/SwapSchema.js";
+import { getCoinBalance, handleZodError } from "../utils/helpers.js";
 
 type TransactionPayload = Prisma.TransactionGetPayload<{}>;
 const MAX_SWAP_TRANSACTION_RETRIES = 3;
@@ -34,9 +34,13 @@ const formatTransaction = (tx: TransactionPayload) => {
   };
 };
 
-exports.createSwap = async (req: Request, res: Response) => {
+export const createSwap = async (req: Request, res: Response) => {
   try {
     const { walletId } = req.params;
+    if (!walletId) {
+      return res.status(400).json({ error: "Wallet ID is required." });
+    }
+
     const validationResult = CreateSwapSchema.safeParse(req.body);
 
     if (!validationResult.success) {
@@ -180,9 +184,12 @@ exports.createSwap = async (req: Request, res: Response) => {
   }
 };
 
-exports.getSwapSettings = async (req: Request, res: Response) => {
+export const getSwapSettings = async (req: Request, res: Response) => {
   try {
     const { walletId } = req.params;
+    if (!walletId) {
+      return res.status(400).json({ error: "Wallet ID is required." });
+    }
 
     const settings = await prisma.swapSettings.findUnique({
       where: { walletId },
@@ -203,9 +210,13 @@ exports.getSwapSettings = async (req: Request, res: Response) => {
   }
 };
 
-exports.updateSwapSettings = async (req: Request, res: Response) => {
+export const updateSwapSettings = async (req: Request, res: Response) => {
   try {
     const { walletId } = req.params;
+    if (!walletId) {
+      return res.status(400).json({ error: "Wallet ID is required." });
+    }
+
     const validationResult = UpdateSwapSettingsSchema.safeParse(req.body);
 
     if (!validationResult.success) {
