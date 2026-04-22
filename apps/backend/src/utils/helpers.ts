@@ -1,6 +1,8 @@
 const z = require("zod");
 const prisma = require("../prisma");
+const { Prisma } = require("@prisma/client");
 import type { Response } from "express";
+
 exports.handleZodError = (res: Response, error: any) => {
   if (error instanceof z.ZodError) {
     const fieldErrors = error.flatten().fieldErrors;
@@ -21,32 +23,48 @@ exports.getCoinBalance = async (
   upToDate?: Date,
   prismaClient: any = prisma,
 ): Promise<number> => {
-  const dateCondition = upToDate
-    ? {
-        createdAt: { lte: upToDate },
-      }
-    : {}; // Якщо upToDate не передано, то брать всі транзакції
+  const [balanceRow] = await prismaClient.$queryRaw<
+    { balance: number | string }[]
+  >`
+    SELECT COALESCE(
+      SUM(CASE WHEN "buyOrSell" = 'buy' THEN "quantity" ELSE -"quantity" END),
+      0
+    ) AS "balance"
+    FROM "Transaction"
+    WHERE
+      "walletId" = ${walletId}
+      AND "coinSymbol" = ${coinSymbol}
+      ${upToDate ? Prisma.sql`AND "createdAt" <= ${upToDate}` : Prisma.empty};
+  `;
 
-  const transactions = await prismaClient.transaction.findMany({
-    where: {
-      walletId,
-      coinSymbol,
-      ...dateCondition,
-    },
-    select: { buyOrSell: true, quantity: true },
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-  });
+  // const dateCondition = upToDate
+  //   ? {
+  //       createdAt: { lte: upToDate },
+  //     }
+  //   : {};
+  //
+  // const transactions = await prismaClient.transaction.findMany({
+  //   where: {
+  //     walletId,
+  //     coinSymbol,
+  //     ...dateCondition,
+  //   },
+  //   select: { buyOrSell: true, quantity: true },
+  //   orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  // });
+  //
+  // let balance = 0;
+  // for (const tx of transactions) {
+  //   const qty = Number(tx.quantity);
+  //   if (tx.buyOrSell === "buy") {
+  //     balance += qty;
+  //   } else {
+  //     balance -= qty;
+  //   }
+  // }
+  // return balance;
 
-  let balance = 0;
-  for (const tx of transactions) {
-    const qty = Number(tx.quantity);
-    if (tx.buyOrSell === "buy") {
-      balance += qty;
-    } else {
-      balance -= qty;
-    }
-  }
-  return balance;
+  return Number(balanceRow?.balance ?? 0);
 };
 
 exports.calculateWalletStats = (

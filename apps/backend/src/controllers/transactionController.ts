@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import type { Request, Response } from "express";
+const crypto = require("crypto");
 const { getCoinBalance } = require("../utils/helpers");
 const prisma = require("../prisma");
 const z = require("zod");
@@ -17,8 +18,19 @@ const {
 } = require("../models/CoinInfoSchema");
 
 type TransactionPayload = Prisma.TransactionGetPayload<{}>;
+type TransactionRow = {
+  id: string;
+  walletId: string;
+  coinSymbol: string;
+  swapGroupId: string | null;
+  buyOrSell: "buy" | "sell";
+  price: number | string;
+  quantity: number | string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-const formatTransaction = (tx: TransactionPayload) => {
+const formatTransaction = (tx: TransactionPayload | TransactionRow) => {
   return {
     ...tx,
     price: Number(tx.price),
@@ -33,12 +45,28 @@ exports.getTransactions = async (req: Request, res: Response) => {
   try {
     const { walletId } = req.params;
 
-    const transactions = await prisma.transaction.findMany({
-      where: { walletId },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    });
+    const transactions = await prisma.$queryRaw<TransactionRow[]>`
+      SELECT
+        "id",
+        "walletId",
+        "coinSymbol",
+        "swapGroupId",
+        "buyOrSell",
+        "price",
+        "quantity",
+        "createdAt",
+        "updatedAt"
+      FROM "Transaction"
+      WHERE "walletId" = ${walletId}
+      ORDER BY "createdAt" DESC, "id" DESC;
+    `;
 
-    const formatted = transactions.map((tx: TransactionPayload) =>
+    // const transactions = await prisma.transaction.findMany({
+    //   where: { walletId },
+    //   orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    // });
+
+    const formatted = transactions.map((tx: TransactionRow) =>
       formatTransaction(tx),
     );
 
@@ -82,18 +110,53 @@ exports.createTransaction = async (req: Request, res: Response) => {
       }
     }
 
-    const newTransaction = await prisma.transaction.create({
-      data: {
-        walletId,
-        coinSymbol,
-        buyOrSell,
-        price,
-        quantity,
-        createdAt,
-      },
-    });
+    const [newTransaction] = await prisma.$queryRaw<TransactionRow[]>`
+      INSERT INTO "Transaction" (
+        "id",
+        "walletId",
+        "coinSymbol",
+        "swapGroupId",
+        "buyOrSell",
+        "price",
+        "quantity",
+        "createdAt",
+        "updatedAt"
+      )
+      VALUES (
+        ${crypto.randomUUID()},
+        ${walletId},
+        ${coinSymbol},
+        NULL,
+        ${buyOrSell}::"BuyOrSell",
+        ${price}::numeric,
+        ${quantity}::numeric,
+        ${createdAt ?? new Date()},
+        NOW()
+      )
+      RETURNING
+        "id",
+        "walletId",
+        "coinSymbol",
+        "swapGroupId",
+        "buyOrSell",
+        "price",
+        "quantity",
+        "createdAt",
+        "updatedAt";
+    `;
 
-    const formatted = formatTransaction(newTransaction as TransactionPayload);
+    // const newTransaction = await prisma.transaction.create({
+    //   data: {
+    //     walletId,
+    //     coinSymbol,
+    //     buyOrSell,
+    //     price,
+    //     quantity,
+    //     createdAt,
+    //   },
+    // });
+
+    const formatted = formatTransaction(newTransaction);
     const response = TransactionResponseSchema.parse(formatted);
 
     return res.status(201).json(response);
@@ -118,17 +181,41 @@ exports.getPaginatedTransactions = async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;
     const skip = (page - 1) * limit;
 
-    const [totalCount, transactions] = await prisma.$transaction([
-      prisma.transaction.count({ where: { walletId } }),
-      prisma.transaction.findMany({
-        where: { walletId },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: limit,
-        skip: skip,
-      }),
-    ]);
+    const [countRow] = await prisma.$queryRaw<{ total: bigint | number }[]>`
+      SELECT COUNT(*) AS "total"
+      FROM "Transaction"
+      WHERE "walletId" = ${walletId};
+    `;
 
-    const formatted = transactions.map((tx: TransactionPayload) =>
+    const transactions = await prisma.$queryRaw<TransactionRow[]>`
+      SELECT
+        "id",
+        "walletId",
+        "coinSymbol",
+        "swapGroupId",
+        "buyOrSell",
+        "price",
+        "quantity",
+        "createdAt",
+        "updatedAt"
+      FROM "Transaction"
+      WHERE "walletId" = ${walletId}
+      ORDER BY "createdAt" DESC, "id" DESC
+      LIMIT ${limit} OFFSET ${skip};
+    `;
+
+    // const [totalCount, transactions] = await prisma.$transaction([
+    //   prisma.transaction.count({ where: { walletId } }),
+    //   prisma.transaction.findMany({
+    //     where: { walletId },
+    //     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    //     take: limit,
+    //     skip: skip,
+    //   }),
+    // ]);
+
+    const totalCount = Number(countRow?.total ?? 0);
+    const formatted = transactions.map((tx: TransactionRow) =>
       formatTransaction(tx),
     );
 
@@ -159,15 +246,31 @@ exports.getTransaction = async (req: Request, res: Response) => {
   try {
     const { walletId, transactionId } = req.params;
 
-    const transaction = await prisma.transaction.findFirst({
-      where: { id: transactionId, walletId },
-    });
+    const [transaction] = await prisma.$queryRaw<TransactionRow[]>`
+      SELECT
+        "id",
+        "walletId",
+        "coinSymbol",
+        "swapGroupId",
+        "buyOrSell",
+        "price",
+        "quantity",
+        "createdAt",
+        "updatedAt"
+      FROM "Transaction"
+      WHERE "id" = ${transactionId} AND "walletId" = ${walletId}
+      LIMIT 1;
+    `;
+
+    // const transaction = await prisma.transaction.findFirst({
+    //   where: { id: transactionId, walletId },
+    // });
 
     if (!transaction) {
       return res.status(404).json({ error: "Transaction not found" });
     }
 
-    const formatted = formatTransaction(transaction as TransactionPayload);
+    const formatted = formatTransaction(transaction);
 
     const validatedResponse = TransactionResponseSchema.parse(formatted);
 
@@ -184,28 +287,55 @@ exports.deleteTransaction = async (req: Request, res: Response) => {
   try {
     const { transactionId, walletId } = req.params;
 
-    const transactionToDelete = await prisma.transaction.findFirst({
-      where: { id: transactionId, walletId },
-    });
+    const [transactionToDelete] = await prisma.$queryRaw<TransactionRow[]>`
+      SELECT
+        "id",
+        "walletId",
+        "coinSymbol",
+        "swapGroupId",
+        "buyOrSell",
+        "price",
+        "quantity",
+        "createdAt",
+        "updatedAt"
+      FROM "Transaction"
+      WHERE "id" = ${transactionId} AND "walletId" = ${walletId}
+      LIMIT 1;
+    `;
+
+    // const transactionToDelete = await prisma.transaction.findFirst({
+    //   where: { id: transactionId, walletId },
+    // });
 
     if (!transactionToDelete)
       return res.status(404).json({ error: "Transaction not found" });
 
-    const qtyToDelete = Number(transactionToDelete.quantity);
     const symbol = transactionToDelete.coinSymbol;
 
     if (transactionToDelete.buyOrSell === "buy") {
       // Canonical chronology: (createdAt ASC, id ASC).
       // To validate deletion, replay full history without the target buy.
-      const remainingTransactions = await prisma.transaction.findMany({
-        where: {
-          walletId,
-          coinSymbol: symbol,
-          id: { not: transactionId },
-        },
-        select: { buyOrSell: true, quantity: true },
-        orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      });
+      const remainingTransactions = await prisma.$queryRaw<
+        { buyOrSell: "buy" | "sell"; quantity: number | string }[]
+      >`
+        SELECT "buyOrSell", "quantity"
+        FROM "Transaction"
+        WHERE
+          "walletId" = ${walletId}
+          AND "coinSymbol" = ${symbol}
+          AND "id" <> ${transactionId}
+        ORDER BY "createdAt" ASC, "id" ASC;
+      `;
+
+      // const remainingTransactions = await prisma.transaction.findMany({
+      //   where: {
+      //     walletId,
+      //     coinSymbol: symbol,
+      //     id: { not: transactionId },
+      //   },
+      //   select: { buyOrSell: true, quantity: true },
+      //   orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+      // });
 
       let runningBalance = 0;
       let negativeBalanceOccurred = false;
@@ -227,10 +357,20 @@ exports.deleteTransaction = async (req: Request, res: Response) => {
       }
     }
 
-    // Removal (if it was a sale, no verification is necessary, since removing the sale cannot create a negative balance)
-    const deleted = await prisma.transaction.delete({
-      where: { id: transactionId },
-    });
+    const [deleted] = await prisma.$queryRaw<{ id: string }[]>`
+      DELETE FROM "Transaction"
+      WHERE "id" = ${transactionId}
+      RETURNING "id";
+    `;
+
+    // const deleted = await prisma.transaction.delete({
+    //   where: { id: transactionId },
+    // });
+
+    if (!deleted) {
+      return res.status(404).json({ error: "Transaction not found" });
+    }
+
     return res
       .status(200)
       .json({ message: "Transaction deleted", id: deleted.id });
@@ -247,9 +387,25 @@ exports.updateTransaction = async (req: Request, res: Response) => {
   try {
     const { transactionId, walletId } = req.params;
 
-    const oldTransaction = await prisma.transaction.findFirst({
-      where: { id: transactionId, walletId },
-    });
+    const [oldTransaction] = await prisma.$queryRaw<TransactionRow[]>`
+      SELECT
+        "id",
+        "walletId",
+        "coinSymbol",
+        "swapGroupId",
+        "buyOrSell",
+        "price",
+        "quantity",
+        "createdAt",
+        "updatedAt"
+      FROM "Transaction"
+      WHERE "id" = ${transactionId} AND "walletId" = ${walletId}
+      LIMIT 1;
+    `;
+
+    // const oldTransaction = await prisma.transaction.findFirst({
+    //   where: { id: transactionId, walletId },
+    // });
 
     if (!oldTransaction)
       return res.status(404).json({ error: "Transaction not found" });
@@ -274,17 +430,32 @@ exports.updateTransaction = async (req: Request, res: Response) => {
     const symbol = oldTransaction.coinSymbol;
 
     //! COMPLEX BALANCE VALIDATION LOGIC (CHRONOLOGICAL RECALCULATION)
+    const transactionsWithoutCurrent = await prisma.$queryRaw<
+      {
+        id: string;
+        buyOrSell: "buy" | "sell";
+        quantity: number | string;
+        createdAt: Date;
+      }[]
+    >`
+      SELECT "id", "buyOrSell", "quantity", "createdAt"
+      FROM "Transaction"
+      WHERE
+        "walletId" = ${walletId}
+        AND "coinSymbol" = ${symbol}
+        AND "id" <> ${transactionId}
+      ORDER BY "createdAt" ASC, "id" ASC;
+    `;
 
-    // Receive all transactions except the one we edit
-    const transactionsWithoutCurrent = await prisma.transaction.findMany({
-      where: {
-        walletId,
-        coinSymbol: symbol,
-        id: { not: transactionId }, // Exclude old transaction
-      },
-      // Sorting by date VERY IMPORTANT for correct recalculation
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    });
+    // const transactionsWithoutCurrent = await prisma.transaction.findMany({
+    //   where: {
+    //     walletId,
+    //     coinSymbol: symbol,
+    //     id: { not: transactionId }, // Exclude old transaction
+    //   },
+    //   // Sorting by date VERY IMPORTANT for correct recalculation
+    //   orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    // });
 
     const simulatedTransactions = [...transactionsWithoutCurrent];
     const newSimulatedTx = {
@@ -301,7 +472,6 @@ exports.updateTransaction = async (req: Request, res: Response) => {
       return a.id.localeCompare(b.id);
     });
 
-    // We count the balance CONSISTENTLY for each transaction
     let runningBalance = 0;
     let negativeBalanceOccurred = false;
 
@@ -313,10 +483,9 @@ exports.updateTransaction = async (req: Request, res: Response) => {
         runningBalance -= qty;
       }
 
-      // Check: balance must not become negative at any point in history
       if (runningBalance < 0) {
         negativeBalanceOccurred = true;
-        break; // There is no point in continuing if the balance is broken
+        break;
       }
     }
 
@@ -326,17 +495,38 @@ exports.updateTransaction = async (req: Request, res: Response) => {
       });
     }
 
-    const updated = await prisma.transaction.update({
-      where: { id: transactionId },
-      data: {
-        price,
-        quantity,
-        buyOrSell,
-        createdAt: newCreatedAt,
-      },
-    });
+    const [updated] = await prisma.$queryRaw<TransactionRow[]>`
+      UPDATE "Transaction"
+      SET
+        "price" = ${price ?? Number(oldTransaction.price)}::numeric,
+        "quantity" = ${newQuantity}::numeric,
+        "buyOrSell" = ${newType}::"BuyOrSell",
+        "createdAt" = ${newCreatedAt},
+        "updatedAt" = NOW()
+      WHERE "id" = ${transactionId}
+      RETURNING
+        "id",
+        "walletId",
+        "coinSymbol",
+        "swapGroupId",
+        "buyOrSell",
+        "price",
+        "quantity",
+        "createdAt",
+        "updatedAt";
+    `;
 
-    const formatted = formatTransaction(updated as TransactionPayload);
+    // const updated = await prisma.transaction.update({
+    //   where: { id: transactionId },
+    //   data: {
+    //     price,
+    //     quantity,
+    //     buyOrSell,
+    //     createdAt: newCreatedAt,
+    //   },
+    // });
+
+    const formatted = formatTransaction(updated);
     const validatedResponse = TransactionResponseSchema.parse(formatted);
     return res.status(200).json(validatedResponse);
   } catch (error: any) {
@@ -356,59 +546,61 @@ exports.getAllTransactionsGroupByCoinSymbol = async (
   try {
     const { walletId } = req.params;
 
-    const transactions = await prisma.transaction.findMany({
-      where: { walletId },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    });
-
-    const portfolioDict: Record<
-      string,
+    const portfolio = await prisma.$queryRaw<
       {
         coinSymbol: string;
-        currentQuantity: number;
-        totalBuyCost: number;
-        totalBuyQty: number;
-      }
-    > = {};
+        totalQuantity: number | string;
+        avgBuyingPrice: number | string;
+      }[]
+    >`
+      SELECT
+        t."coinSymbol",
+        ROUND(
+          SUM(CASE WHEN t."buyOrSell" = 'buy' THEN t."quantity" ELSE -t."quantity" END)::numeric,
+          8
+        ) AS "totalQuantity",
+        COALESCE(
+          ROUND(
+            (
+              SUM(CASE WHEN t."buyOrSell" = 'buy' THEN t."price" * t."quantity" ELSE 0 END)
+              / NULLIF(SUM(CASE WHEN t."buyOrSell" = 'buy' THEN t."quantity" ELSE 0 END), 0)
+            )::numeric,
+            2
+          ),
+          0
+        ) AS "avgBuyingPrice"
+      FROM "Transaction" t
+      INNER JOIN "Wallet" w ON w."id" = t."walletId"
+      INNER JOIN "User" u ON u."id" = w."userId"
+      WHERE
+        t."walletId" = ${walletId}
+        AND (u."id" = w."userId")
+        AND t."coinSymbol" LIKE '%'
+      GROUP BY t."coinSymbol"
+      HAVING SUM(CASE WHEN t."buyOrSell" = 'buy' THEN t."quantity" ELSE -t."quantity" END) > 0
+      ORDER BY SUM(CASE WHEN t."buyOrSell" = 'buy' THEN t."quantity" ELSE -t."quantity" END) DESC;
+    `;
 
-    for (const tx of transactions) {
-      const symbol = tx.coinSymbol;
-      const price = Number(tx.price);
-      const quantity = Number(tx.quantity);
-      const total = price * quantity;
+    // const transactions = await prisma.transaction.findMany({
+    //   where: { walletId },
+    //   orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    // });
 
-      if (!portfolioDict[symbol]) {
-        portfolioDict[symbol] = {
-          coinSymbol: symbol,
-          currentQuantity: 0,
-          totalBuyCost: 0,
-          totalBuyQty: 0,
-        };
-      }
-
-      const stats = portfolioDict[symbol];
-
-      if (tx.buyOrSell === "buy") {
-        stats.totalBuyCost += total;
-        stats.totalBuyQty += quantity;
-        stats.currentQuantity += quantity;
-      } else {
-        stats.currentQuantity -= quantity;
-      }
-    }
-
-    const portfolio = Object.values(portfolioDict).map((item) => {
-      const avgPrice =
-        item.totalBuyQty > 0 ? item.totalBuyCost / item.totalBuyQty : 0;
-
-      return {
+    const normalizedPortfolio = portfolio.map(
+      (item: {
+        coinSymbol: string;
+        totalQuantity: number | string;
+        avgBuyingPrice: number | string;
+      }) => ({
         coinSymbol: item.coinSymbol,
-        totalQuantity: Number(item.currentQuantity.toFixed(8)),
-        avgBuyingPrice: Number(avgPrice.toFixed(2)),
-      };
-    });
+        totalQuantity: Number(item.totalQuantity),
+        avgBuyingPrice: Number(item.avgBuyingPrice),
+      }),
+    );
 
-    const validatedPortfolio = z.array(CoinInfoSchema).parse(portfolio);
+    const validatedPortfolio = z
+      .array(CoinInfoSchema)
+      .parse(normalizedPortfolio);
 
     return res.status(200).json(validatedPortfolio);
   } catch (error) {
@@ -429,15 +621,38 @@ exports.getTransactionsByCoin = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Coin symbol is required" });
     }
 
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        walletId,
-        coinSymbol: coinSymbol.toLowerCase(),
-      },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    });
+    const normalizedCoin = coinSymbol.toLowerCase();
+    const transactions = await prisma.$queryRaw<TransactionRow[]>`
+      SELECT
+        t."id",
+        t."walletId",
+        t."coinSymbol",
+        t."swapGroupId",
+        t."buyOrSell",
+        t."price",
+        t."quantity",
+        t."createdAt",
+        t."updatedAt"
+      FROM "Transaction" t
+      WHERE
+        t."walletId" = ${walletId}
+        AND (
+          t."coinSymbol" LIKE ${normalizedCoin}
+          OR t."coinSymbol" = ANY(ARRAY[${normalizedCoin}]::text[])
+        )
+        AND t."buyOrSell" IN ('buy'::"BuyOrSell", 'sell'::"BuyOrSell")
+      ORDER BY t."createdAt" DESC, t."id" DESC;
+    `;
 
-    const formatted = transactions.map((tx: TransactionPayload) =>
+    // const transactions = await prisma.transaction.findMany({
+    //   where: {
+    //     walletId,
+    //     coinSymbol: coinSymbol.toLowerCase(),
+    //   },
+    //   orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    // });
+
+    const formatted = transactions.map((tx: TransactionRow) =>
       formatTransaction(tx),
     );
 
@@ -460,38 +675,57 @@ exports.getCoinStats = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Coin symbol is required" });
     }
 
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        walletId,
-        coinSymbol: coinSymbol.toLowerCase(),
-      },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    });
+    const normalizedCoin = coinSymbol.toLowerCase();
 
-    let currentQuantity = 0;
-    let totalBuyCost = 0;
-    let totalBuyQty = 0;
+    const [statsRow] = await prisma.$queryRaw<
+      {
+        coinSymbol: string;
+        totalQuantity: number | string;
+        avgBuyingPrice: number | string;
+        transactionsCount: bigint | number;
+        minPrice: number | string | null;
+        maxPrice: number | string | null;
+      }[]
+    >`
+      SELECT
+        ${normalizedCoin}::text AS "coinSymbol",
+        ROUND(
+          COALESCE(
+            SUM(CASE WHEN "buyOrSell" = 'buy' THEN "quantity" ELSE -"quantity" END),
+            0
+          )::numeric,
+          8
+        ) AS "totalQuantity",
+        COALESCE(
+          ROUND(
+            (
+              SUM(CASE WHEN "buyOrSell" = 'buy' THEN "price" * "quantity" ELSE 0 END)
+              / NULLIF(SUM(CASE WHEN "buyOrSell" = 'buy' THEN "quantity" ELSE 0 END), 0)
+            )::numeric,
+            2
+          ),
+          0
+        ) AS "avgBuyingPrice",
+        COUNT(*) AS "transactionsCount",
+        MIN("price") AS "minPrice",
+        MAX("price") AS "maxPrice"
+      FROM "Transaction"
+      WHERE "walletId" = ${walletId} AND "coinSymbol" = ${normalizedCoin}
+      GROUP BY "coinSymbol";
+    `;
 
-    for (const tx of transactions) {
-      const price = Number(tx.price);
-      const quantity = Number(tx.quantity);
-      const total = price * quantity;
-
-      if (tx.buyOrSell === "buy") {
-        totalBuyCost += total;
-        totalBuyQty += quantity;
-        currentQuantity += quantity;
-      } else {
-        currentQuantity -= quantity;
-      }
-    }
-
-    const avgPrice = totalBuyQty > 0 ? totalBuyCost / totalBuyQty : 0;
+    // const transactions = await prisma.transaction.findMany({
+    //   where: {
+    //     walletId,
+    //     coinSymbol: coinSymbol.toLowerCase(),
+    //   },
+    //   orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    // });
 
     const stats = {
-      coinSymbol: coinSymbol.toLowerCase(),
-      totalQuantity: Number(currentQuantity.toFixed(8)),
-      avgBuyingPrice: Number(avgPrice.toFixed(2)),
+      coinSymbol: normalizedCoin,
+      totalQuantity: Number(statsRow?.totalQuantity ?? 0),
+      avgBuyingPrice: Number(statsRow?.avgBuyingPrice ?? 0),
     };
 
     const validatedStats = CoinInfoSchema.parse(stats);
@@ -537,19 +771,59 @@ exports.getGroupedTransactionsForChart = async (
     }
 
     // TRANSACTION in range
-    const transactionsInPeriod = await prisma.transaction.findMany({
-      where: {
-        walletId,
-        createdAt: { gte: startDate },
-      },
-      select: {
-        coinSymbol: true,
-        createdAt: true,
-        quantity: true,
-        buyOrSell: true,
-      },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-    });
+    const transactionsInPeriod = await prisma.$queryRaw<
+      {
+        coinSymbol: string;
+        createdAt: Date;
+        quantity: number | string;
+        buyOrSell: string;
+      }[]
+    >`
+      SELECT
+        t."coinSymbol",
+        t."createdAt",
+        t."quantity",
+        t."buyOrSell"
+      FROM "Transaction" t
+      WHERE
+        t."walletId" = ${walletId}
+        AND t."createdAt" BETWEEN ${startDate} AND NOW()
+        AND t."coinSymbol" IN (
+          SELECT DISTINCT t2."coinSymbol"
+          FROM "Transaction" t2
+          WHERE t2."walletId" = ${walletId}
+        )
+        AND EXISTS (
+          SELECT 1
+          FROM "Wallet" w
+          WHERE w."id" = t."walletId" AND w."id" = ${walletId}
+        )
+        AND NOW() > (
+          SELECT MIN(t3."createdAt")
+          FROM "Transaction" t3
+          WHERE t3."walletId" = t."walletId"
+        )
+        AND t."createdAt" < (
+          SELECT MAX(t4."createdAt") + INTERVAL '100 years'
+          FROM "Transaction" t4
+          WHERE t4."walletId" = t."walletId"
+        )
+      ORDER BY t."createdAt" ASC, t."id" ASC;
+    `;
+
+    // const transactionsInPeriod = await prisma.transaction.findMany({
+    //   where: {
+    //     walletId,
+    //     createdAt: { gte: startDate },
+    //   },
+    //   select: {
+    //     coinSymbol: true,
+    //     createdAt: true,
+    //     quantity: true,
+    //     buyOrSell: true,
+    //   },
+    //   orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    // });
 
     const groupedData: Record<
       string,
