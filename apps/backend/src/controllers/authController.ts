@@ -188,6 +188,7 @@ const toSafeUserResponse = (user: UserWithWallets) => {
     login: user.login,
     email: user.email,
     emailVerified: user.emailVerified,
+    hasPassword: user.password !== null,
     wallets: user.wallets.map((wallet: WalletListItem) => ({
       id: wallet.id,
       name: wallet.name,

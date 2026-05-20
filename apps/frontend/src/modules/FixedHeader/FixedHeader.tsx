@@ -3,6 +3,7 @@ import { menu, type MenuItem } from "./data";
 import { useBurgerMenu } from "../../hooks/useBurgerMenu";
 import { scrollToSectionById } from "../../utils/functions";
 import { Auth } from "../Auth/Auth";
+import { Settings } from "../Auth/Settings";
 
 export function FixedHeader() {
   const { isBurgerOpen, toggleBurger, isMobile } = useBurgerMenu();
@@ -36,6 +37,7 @@ export function FixedHeader() {
           </button>
         ))}
         <Auth />
+        <Settings />
       </>
     );
   };

@@ -10,6 +10,7 @@ export const UserSchema = z.object({
     .max(30),
   email: z.string().email().nullable().optional(),
   emailVerified: z.boolean().optional(),
+  hasPassword: z.boolean().optional(),
 
   token: z.string().optional(), // Access token
 

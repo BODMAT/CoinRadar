@@ -95,6 +95,69 @@ export const authApi = createApi({
       },
       invalidatesTags: ["User"],
     }),
+
+    logoutAllSessions: builder.mutation<{ message: string }, void>({
+      query: () => ({
+        url: "auth/logout-all",
+        method: "POST",
+      }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+        } finally {
+          dispatch(logout());
+          dispatch(clearWalletState());
+          dispatch(authApi.util.resetApiState());
+        }
+      },
+      invalidatesTags: ["User"],
+    }),
+
+    setPassword: builder.mutation<
+      { message: string },
+      { password: string; oldPassword?: string }
+    >({
+      query: (body) => ({
+        url: "auth/set-password",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["User"],
+    }),
+
+    sendOneTimePassword: builder.mutation<{ message: string }, void>({
+      query: () => ({
+        url: "auth/send-one-time-password",
+        method: "POST",
+      }),
+    }),
+
+    deleteAccount: builder.mutation<{ message: string }, { password?: string }>(
+      {
+        query: (body) => ({
+          url: "auth/account",
+          method: "DELETE",
+          body,
+        }),
+        async onQueryStarted(_, { dispatch, queryFulfilled }) {
+          try {
+            await queryFulfilled;
+            dispatch(logout());
+            dispatch(clearWalletState());
+            dispatch(authApi.util.resetApiState());
+          } catch (error) {
+            console.error("Delete account error:", error);
+          }
+        },
+      },
+    ),
+
+    requestDeleteAccount: builder.mutation<{ message: string }, void>({
+      query: () => ({
+        url: "auth/account/request-delete",
+        method: "POST",
+      }),
+    }),
   }),
 });
 
@@ -104,4 +167,9 @@ export const {
   useRegisterUserMutation,
   useResendVerificationMutation,
   useGetCurrentUserQuery,
+  useLogoutAllSessionsMutation,
+  useSetPasswordMutation,
+  useSendOneTimePasswordMutation,
+  useDeleteAccountMutation,
+  useRequestDeleteAccountMutation,
 } = authApi;

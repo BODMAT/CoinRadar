@@ -8,6 +8,7 @@ import { AllCrypto } from "../AllCrypto/AllCrypto";
 import { lazy, Suspense } from "react";
 import { useOnScreen } from "../../hooks/useOnScreen";
 import { useGetCurrentUserQuery } from "../Auth/auth.api";
+import { AuthQueryParamToast } from "../Auth/AuthQueryParamToast";
 
 const Wallet = lazy(() =>
   import("../Wallet/Wallet").then((module) => ({
@@ -43,6 +44,8 @@ export function App() {
 
       {/* All PopUps in one portal */}
       <PopUp />
+
+      <AuthQueryParamToast />
 
       <Background />
     </div>
