@@ -102,7 +102,7 @@ export const getLocalDatetime = (dateInput?: string | Date): string => {
   }
 
   if (isNaN(date.getTime())) {
-    console.error("Помилка: Недійсний вхідний параметр дати.");
+    console.error("Error: Invalid date input parameter.");
     return "";
   }
   const pad = (num: number): string => String(num).padStart(2, "0");
