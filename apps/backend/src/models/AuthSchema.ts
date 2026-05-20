@@ -9,6 +9,7 @@ export const UserSchema = z.object({
     .min(3, "Login must be at least 3 characters")
     .max(30),
   email: z.string().email().nullable().optional(),
+  emailVerified: z.boolean().optional(),
 
   token: z.string().optional(), // Access token
 
@@ -22,10 +23,14 @@ export const RegisterSchema = z.object({
     .min(3, "Login must be at least 3 characters")
     .max(30),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  email: z.string().email("Invalid email format").optional().or(z.literal("")),
+  email: z.string().email("Invalid email format"),
 });
 
 export const LoginSchema = z.object({
   login: z.string().trim().min(3, "Login is required"),
   password: z.string().min(1, "Password is required"),
+});
+
+export const ResendVerificationSchema = z.object({
+  login: z.string().trim().min(3, "Login is required").max(30),
 });

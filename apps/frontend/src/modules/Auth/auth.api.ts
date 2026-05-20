@@ -4,6 +4,7 @@ import {
   type AuthResponse,
   type Login,
   type Register,
+  type RegisterResponse,
   type UserSafe,
 } from "./auth.schema";
 import { setUserData, logout } from "./auth.slice";
@@ -18,23 +19,24 @@ export const authApi = createApi({
   baseQuery: baseQueryWithReauth,
   tagTypes: ["User"],
   endpoints: (builder) => ({
-    registerUser: builder.mutation<AuthResponse, Register>({
+    registerUser: builder.mutation<RegisterResponse, Register>({
       query: (credentials) => ({
         url: "auth/register",
         method: "POST",
         body: credentials,
       }),
-      async onQueryStarted(_, { dispatch, queryFulfilled }) {
-        try {
-          const { data: responseData } = await queryFulfilled;
-          const parsedUser: UserSafe = UserSchema.parse(responseData.user);
-          dispatch(setUserData(parsedUser));
-          dispatch(setWalletsList(parsedUser.wallets || []));
-        } catch (error) {
-          console.error("Registration error:", error);
-        }
-      },
       invalidatesTags: ["User"],
+    }),
+
+    resendVerification: builder.mutation<
+      { message: string },
+      { login: string }
+    >({
+      query: (body) => ({
+        url: "auth/resend-verification",
+        method: "POST",
+        body,
+      }),
     }),
 
     loginUser: builder.mutation<AuthResponse, Login>({
@@ -100,5 +102,6 @@ export const {
   useLogoutUserMutation,
   useLoginUserMutation,
   useRegisterUserMutation,
+  useResendVerificationMutation,
   useGetCurrentUserQuery,
 } = authApi;

@@ -64,7 +64,11 @@ export function AuthPopup() {
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: Login | Register) => ({ ...prev, [name]: value }));
+    (
+      setFormData as (
+        updater: (prev: Login | Register) => Login | Register,
+      ) => void
+    )((prev) => ({ ...prev, [name]: value }) as Login | Register);
 
     if (formErrors[name as CombinedFormKeys]) {
       setFormErrors((prev) => ({ ...prev, [name]: undefined }));
@@ -92,7 +96,11 @@ export function AuthPopup() {
     }
 
     try {
-      await currentMutation(result.data as Login | Register).unwrap();
+      await (
+        currentMutation as (arg: Login | Register) => {
+          unwrap: () => Promise<unknown>;
+        }
+      )(result.data as Login | Register).unwrap();
       dispatch(closePopup());
     } catch (err) {
       console.error("API Error:", err);

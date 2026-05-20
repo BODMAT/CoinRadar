@@ -4,6 +4,8 @@ const authRouter = express.Router();
 import {
   registerUser,
   loginUser,
+  verifyEmail,
+  resendVerification,
   startGoogleAuth,
   googleAuthCallback,
   refreshSession,
@@ -15,6 +17,8 @@ import { protect } from "../middleware/authMiddleware.js";
 
 authRouter.post("/register", registerUser);
 authRouter.post("/login", loginUser);
+authRouter.get("/verify-email", verifyEmail);
+authRouter.post("/resend-verification", resendVerification);
 authRouter.get("/google/start", startGoogleAuth);
 authRouter.get("/google/callback", googleAuthCallback);
 authRouter.post("/refresh", refreshSession);
