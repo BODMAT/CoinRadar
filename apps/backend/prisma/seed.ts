@@ -1,8 +1,13 @@
 import { PrismaClient, BuyOrSell } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { randomUUID } from "node:crypto";
 import bcrypt from "bcrypt";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL!,
+});
+
+const prisma = new PrismaClient({ adapter });
 
 const NOW = new Date("2026-05-20T12:00:00.000Z");
 const PIVOT_DATE = new Date("2026-03-01T00:00:00.000Z");
