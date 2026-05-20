@@ -12,9 +12,13 @@ import {
   UserSchema,
 } from "../models/AuthSchema.js";
 import { handleZodError } from "../utils/helpers.js";
-import { sendVerificationEmail } from "../services/emailService.js";
+import {
+  sendVerificationEmail,
+  sendGoogleMergeConfirmationEmail,
+} from "../services/emailService.js";
 
 const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+const MERGE_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
@@ -185,10 +189,13 @@ const toSafeUserResponse = (user: UserWithWallets) => {
   });
 };
 
+type EmailTokenPurpose = "verify_email" | "merge_google" | "delete_account";
+
 const createEmailToken = async (
   userId: string,
-  purpose: "verify_email" | "merge_google" | "delete_account",
+  purpose: EmailTokenPurpose,
   ttlMs: number,
+  metadata?: Prisma.InputJsonValue,
 ): Promise<{ rawToken: string; expiresAt: Date }> => {
   // Invalidate any prior un-consumed tokens of the same purpose for this user
   // so each new email link supersedes the previous one.
@@ -201,7 +208,13 @@ const createEmailToken = async (
   const expiresAt = new Date(Date.now() + ttlMs);
 
   await prisma.emailToken.create({
-    data: { userId, tokenHash, purpose, expiresAt },
+    data: {
+      userId,
+      tokenHash,
+      purpose,
+      expiresAt,
+      ...(metadata !== undefined && { metadata }),
+    },
   });
 
   return { rawToken, expiresAt };
@@ -209,7 +222,7 @@ const createEmailToken = async (
 
 const consumeEmailToken = async (
   rawToken: string,
-  expectedPurpose: "verify_email" | "merge_google" | "delete_account",
+  expectedPurpose: EmailTokenPurpose,
 ) => {
   const tokenHash = hashToken(rawToken);
   const token = await prisma.emailToken.findUnique({
@@ -229,7 +242,11 @@ const consumeEmailToken = async (
     data: { consumedAt: new Date() },
   });
 
-  return { ok: true as const, userId: token.userId };
+  return {
+    ok: true as const,
+    userId: token.userId,
+    metadata: token.metadata,
+  };
 };
 
 const saveRefreshToken = async (
@@ -485,6 +502,66 @@ export const verifyEmail = async (req: Request, res: Response) => {
   return res.redirect(`${FRONTEND_URL}?auth=verified`);
 };
 
+export const verifyGoogleMerge = async (req: Request, res: Response) => {
+  try {
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!token) {
+      return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
+    }
+
+    const result = await consumeEmailToken(token, "merge_google");
+    if (!result.ok) {
+      const param =
+        result.reason === "already_used" ? "merge_already_done" : "merge_error";
+      return res.redirect(`${FRONTEND_URL}?auth=${param}`);
+    }
+
+    const metadata = result.metadata as { sub?: string; email?: string } | null;
+    if (!metadata?.sub) {
+      return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
+    }
+
+    // Refuse if this google identity is already attached to a different user.
+    const conflicting = await prisma.authIdentity.findUnique({
+      where: {
+        provider_providerId: { provider: "google", providerId: metadata.sub },
+      },
+    });
+    if (conflicting && conflicting.userId !== result.userId) {
+      return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
+    }
+
+    if (!conflicting) {
+      await prisma.authIdentity.create({
+        data: {
+          userId: result.userId,
+          provider: "google",
+          providerId: metadata.sub,
+        },
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: result.userId },
+      include: {
+        wallets: {
+          select: { id: true, name: true },
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+    if (!user) {
+      return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
+    }
+
+    await createSession(user, req, res);
+    return res.redirect(`${FRONTEND_URL}?auth=merge_confirmed`);
+  } catch (error) {
+    console.error("Google merge confirmation error:", error);
+    return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
+  }
+};
+
 export const resendVerification = async (req: Request, res: Response) => {
   try {
     const { login } = ResendVerificationSchema.parse(req.body);
@@ -595,23 +672,35 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
       });
 
       if (existingByEmail) {
-        // Refuse to auto-link a Google identity into an account whose email
-        // was never verified — that account may have been planted by an
-        // attacker. Same refusal if Google itself did not verify the email.
-        // Commit 4 replaces this with a merge-confirmation email flow.
-        if (!profile.emailVerified || !existingByEmail.emailVerified) {
+        // Never auto-link a Google identity into an existing account, even if
+        // both sides are verified — proof-of-control over the email right now
+        // is required. Issue a short-lived merge token and email it to the
+        // address on file; the user attaches Google only by clicking it.
+        if (!profile.emailVerified || !existingByEmail.email) {
           return res.redirect(`${FRONTEND_URL}?auth=google_error`);
         }
 
-        await prisma.authIdentity.create({
-          data: {
-            userId: existingByEmail.id,
-            provider: "google",
-            providerId: profile.sub,
-          },
-        });
+        const { rawToken } = await createEmailToken(
+          existingByEmail.id,
+          "merge_google",
+          MERGE_TOKEN_TTL_MS,
+          { sub: profile.sub, email: profile.email },
+        );
 
-        user = existingByEmail;
+        try {
+          await sendGoogleMergeConfirmationEmail(
+            existingByEmail.email,
+            rawToken,
+          );
+        } catch (mailError) {
+          console.error(
+            "Failed to send Google merge confirmation email:",
+            mailError,
+          );
+          return res.redirect(`${FRONTEND_URL}?auth=google_error`);
+        }
+
+        return res.redirect(`${FRONTEND_URL}?auth=google_pending_merge`);
       } else {
         const seed = profile.email.split("@")[0] || profile.name;
         const login = await generateUniqueLogin(seed);

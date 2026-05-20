@@ -8,6 +8,7 @@ import {
   resendVerification,
   startGoogleAuth,
   googleAuthCallback,
+  verifyGoogleMerge,
   refreshSession,
   logoutUser,
   logoutAllUserSessions,
@@ -21,6 +22,7 @@ authRouter.get("/verify-email", verifyEmail);
 authRouter.post("/resend-verification", resendVerification);
 authRouter.get("/google/start", startGoogleAuth);
 authRouter.get("/google/callback", googleAuthCallback);
+authRouter.get("/verify-merge", verifyGoogleMerge);
 authRouter.post("/refresh", refreshSession);
 authRouter.post("/logout", logoutUser);
 authRouter.get("/me", protect, getCurrentUser);
