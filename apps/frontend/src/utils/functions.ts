@@ -115,4 +115,3 @@ export const getLocalDatetime = (dateInput?: string | Date): string => {
 
   return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 };
-
