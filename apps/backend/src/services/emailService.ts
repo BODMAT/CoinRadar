@@ -44,7 +44,7 @@ const getTransporter = (): Transporter => {
     transporter = nodemailer.createTransport({ jsonTransport: true });
     if (process.env.NODE_ENV !== "test") {
       console.warn(
-        "[emailService] SMTP_* env vars not set — using jsonTransport. Emails will be logged, not delivered.",
+        "[emailService] SMTP_* env vars not set - using jsonTransport. Emails will be logged, not delivered.",
       );
     }
   }
@@ -95,7 +95,7 @@ const wrapHtml = (title: string, body: string): string => `<!DOCTYPE html>
 <h2 style="margin:0 0 16px">${title}</h2>
 ${body}
 <hr style="margin:32px 0;border:none;border-top:1px solid #eee" />
-<p style="font-size:12px;color:#888">CoinRadar — automated message. Do not reply.</p>
+<p style="font-size:12px;color:#888">CoinRadar - automated message. Do not reply.</p>
 </body></html>`;
 
 export const sendVerificationEmail = async (to: string, token: string) => {
@@ -132,14 +132,14 @@ If that was you, confirm the link to attach Google to your existing CoinRadar ac
 
 ${link}
 
-The link expires in 1 hour. If it was not you, ignore this email — nothing will change.`;
+The link expires in 1 hour. If it was not you, ignore this email - nothing will change.`;
   const html = wrapHtml(
     "Link Google to your CoinRadar account",
     `<p>Someone tried to sign in with Google using this email address.</p>
 <p>If that was you, confirm to attach Google to your existing CoinRadar account. You will still be able to sign in with your password.</p>
 <p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#6d28d9;color:#fff;border-radius:8px;text-decoration:none">Link Google</a></p>
 <p style="font-size:12px;color:#666">Or open this link:<br/>${link}</p>
-<p>The link expires in 1 hour. If it was not you, ignore this email — nothing will change.</p>`,
+<p>The link expires in 1 hour. If it was not you, ignore this email - nothing will change.</p>`,
   );
 
   return dispatch({ to, subject, purpose: "merge_google", text, html, token });
@@ -150,7 +150,7 @@ export const sendAccountDeletionEmail = async (to: string, token: string) => {
   const subject = "Confirm deletion of your CoinRadar account";
   const text = `You requested permanent deletion of your CoinRadar account.
 
-Confirm by opening the link below. This is irreversible — all wallets and transactions will be removed:
+Confirm by opening the link below. This is irreversible - all wallets and transactions will be removed:
 
 ${link}
 
@@ -197,7 +197,7 @@ Use it once to sign in, then change it from your account settings. If you did no
   });
 };
 
-// Test helpers — only meaningful when NODE_ENV === "test".
+// Test helpers - only meaningful when NODE_ENV === "test".
 // Kept in production builds because tree-shaking is not configured for the backend.
 export const __getCapturedEmails = (): readonly SentEmailRecord[] => captured;
 export const __resetCapturedEmails = (): void => {

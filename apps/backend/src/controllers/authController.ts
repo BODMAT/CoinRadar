@@ -1138,6 +1138,12 @@ export const requestDeleteAccount = async (req: Request, res: Response) => {
         .status(400)
         .json({ error: "Account has no email to send confirmation to." });
     }
+    if (user.password) {
+      return res.status(409).json({
+        error:
+          "This account has a password. Delete it directly with password confirmation.",
+      });
+    }
 
     const { rawToken } = await createEmailToken(
       user.id,

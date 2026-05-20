@@ -114,7 +114,7 @@ export function AuthQueryParamToast() {
           exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.25 }}
           className={
-            "fixed bottom-6 right-6 max-w-sm z-[100000] px-5 py-4 rounded-xl border backdrop-blur-md shadow-lg text-sm font-semibold " +
+            "fixed bottom-6 right-6 max-w-sm z-100000 px-5 py-4 rounded-xl border backdrop-blur-md shadow-lg text-sm font-semibold " +
             toneClass[notice.tone]
           }
           role="status"
