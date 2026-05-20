@@ -11,6 +11,7 @@ import {
   ResendVerificationSchema,
   SetPasswordSchema,
   DeleteAccountSchema,
+  UpdateProfileSchema,
   UserSchema,
 } from "../models/AuthSchema.js";
 import { handleZodError } from "../utils/helpers.js";
@@ -189,6 +190,7 @@ const toSafeUserResponse = (user: UserWithWallets) => {
     email: user.email,
     emailVerified: user.emailVerified,
     hasPassword: user.password !== null,
+    photoUrl: user.photoUrl,
     wallets: user.wallets.map((wallet: WalletListItem) => ({
       id: wallet.id,
       name: wallet.name,
@@ -362,6 +364,7 @@ const getGoogleProfileFromCode = async (code: string) => {
     email?: string;
     email_verified?: string;
     name?: string;
+    picture?: string;
   };
 
   if (info.aud !== GOOGLE_CLIENT_ID) {
@@ -377,6 +380,7 @@ const getGoogleProfileFromCode = async (code: string) => {
     email: info.email,
     emailVerified: info.email_verified === "true",
     name: info.name || info.email,
+    picture: info.picture || null,
   };
 };
 
@@ -729,6 +733,7 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
               email: profile.email,
               password: null,
               emailVerified: profile.emailVerified,
+              photoUrl: profile.picture,
             },
             include: userInclude,
           });
@@ -1131,6 +1136,83 @@ export const requestDeleteAccount = async (req: Request, res: Response) => {
     return res
       .status(500)
       .json({ error: "Server error during delete request." });
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    const parsed = UpdateProfileSchema.parse(req.body ?? {});
+    if (parsed.login === undefined && parsed.photoUrl === undefined) {
+      return res.status(400).json({ error: "Nothing to update." });
+    }
+
+    const data: Prisma.UserUpdateInput = {};
+    if (parsed.login !== undefined) {
+      data.login = parsed.login;
+    }
+    if (parsed.photoUrl !== undefined) {
+      // Treat an empty string as "clear the photo".
+      data.photoUrl = parsed.photoUrl === "" ? null : parsed.photoUrl;
+    }
+
+    let updated;
+    try {
+      updated = await prisma.user.update({
+        where: { id: userId },
+        data,
+        include: {
+          wallets: {
+            select: { id: true, name: true },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      });
+    } catch (e: unknown) {
+      if (
+        e &&
+        typeof e === "object" &&
+        "code" in e &&
+        (e as { code: string }).code === "P2002"
+      ) {
+        return res.status(409).json({ error: "Login is already taken." });
+      }
+      throw e;
+    }
+
+    // Login is encoded in the access JWT — re-sign it so this device picks up
+    // the new value on its next protected call without waiting for refresh.
+    if (parsed.login !== undefined && parsed.login !== updated.login) {
+      // updated.login already reflects the new value; this branch is just a
+      // belt-and-suspenders check, the actual cookie reset happens below.
+    }
+    if (parsed.login !== undefined) {
+      const newAccess = signAccessToken(updated.id, updated.login);
+      res.cookie(ACCESS_COOKIE_NAME, newAccess, {
+        httpOnly: true,
+        secure: cookieSecure,
+        sameSite: normalizedSameSite,
+        maxAge: 15 * 60 * 1000,
+        path: "/",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Profile updated.",
+      user: toSafeUserResponse(updated),
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return handleZodError(res, error);
+    }
+    console.error("Update profile error:", error);
+    return res
+      .status(500)
+      .json({ error: "Server error during profile update." });
   }
 };
 

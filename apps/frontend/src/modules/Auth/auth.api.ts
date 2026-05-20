@@ -158,6 +158,27 @@ export const authApi = createApi({
         method: "POST",
       }),
     }),
+
+    updateProfile: builder.mutation<
+      { message: string; user: UserSafe },
+      { login?: string; photoUrl?: string | null }
+    >({
+      query: (body) => ({
+        url: "auth/me",
+        method: "PATCH",
+        body,
+      }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data: responseData } = await queryFulfilled;
+          const parsedUser: UserSafe = UserSchema.parse(responseData.user);
+          dispatch(setUserData(parsedUser));
+        } catch (error) {
+          console.error("Update profile error:", error);
+        }
+      },
+      invalidatesTags: ["User"],
+    }),
   }),
 });
 
@@ -172,4 +193,5 @@ export const {
   useSendOneTimePasswordMutation,
   useDeleteAccountMutation,
   useRequestDeleteAccountMutation,
+  useUpdateProfileMutation,
 } = authApi;

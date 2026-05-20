@@ -44,3 +44,19 @@ export const SetPasswordSchema = z.object({
 export const DeleteAccountSchema = z.object({
   password: z.string().min(1).optional(),
 });
+
+// photoUrl tolerates http(s) URLs and base64 data URLs alike; length caps
+// abuse via the 1 MB JSON body limit.
+export const UpdateProfileSchema = z.object({
+  login: z
+    .string()
+    .trim()
+    .min(3, "Login must be at least 3 characters")
+    .max(30)
+    .optional(),
+  photoUrl: z
+    .string()
+    .max(800_000, "Image is too large (max ~600 KB).")
+    .nullable()
+    .optional(),
+});

@@ -11,6 +11,7 @@ export const UserSchema = z.object({
   email: z.string().email().nullable().optional(),
   emailVerified: z.boolean().optional(),
   hasPassword: z.boolean().optional(),
+  photoUrl: z.string().nullable().optional(),
 
   token: z.string().optional(),
   wallets: z.array(WalletListItemResponseSchema).optional(),

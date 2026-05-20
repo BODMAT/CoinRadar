@@ -1,14 +1,18 @@
-import { useState, type FormEvent } from "react";
+import { useState, useRef, type FormEvent, type ChangeEvent } from "react";
 import {
   useSetPasswordMutation,
   useSendOneTimePasswordMutation,
   useDeleteAccountMutation,
   useRequestDeleteAccountMutation,
+  useUpdateProfileMutation,
 } from "./auth.api";
+import type { UserSafe } from "./auth.schema";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closePopup } from "../../portals/popup.slice";
 
-type Section = "password" | "otp" | "delete";
+type Section = "profile" | "password" | "otp" | "delete";
+
+const MAX_PHOTO_BYTES = 600 * 1024;
 
 const inputClass =
   "w-full px-4 py-3 bg-white/10 dark:bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-400/50 text-(--color-text) transitioned hover:bg-white/20 dark:hover:bg-black/30 placeholder-gray-400";
@@ -47,7 +51,7 @@ export function AccountSettingsPopup() {
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector((state) => state.auth.user);
 
-  const [section, setSection] = useState<Section>("password");
+  const [section, setSection] = useState<Section>("profile");
 
   if (!currentUser) {
     return (
@@ -68,7 +72,14 @@ export function AccountSettingsPopup() {
         )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={tabButtonClass(section === "profile")}
+          onClick={() => setSection("profile")}
+        >
+          Profile
+        </button>
         <button
           type="button"
           className={tabButtonClass(section === "password")}
@@ -92,6 +103,7 @@ export function AccountSettingsPopup() {
         </button>
       </div>
 
+      {section === "profile" && <ProfileSection user={currentUser} />}
       {section === "password" && (
         <PasswordSection
           hasPassword={hasPassword}
@@ -106,6 +118,159 @@ export function AccountSettingsPopup() {
         />
       )}
     </div>
+  );
+}
+
+function ProfileSection({ user }: { user: UserSafe }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [login, setLogin] = useState(user.login);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(
+    user.photoUrl ?? null,
+  );
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const [updateProfile, { isLoading, error, isError }] =
+    useUpdateProfileMutation();
+  const serverError = isError ? extractServerError(error) : null;
+
+  const dirty = login !== user.login || photoUrl !== (user.photoUrl ?? null);
+
+  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
+    setFileError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setFileError("Please pick an image file.");
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setFileError("Image is too large. Max ~600 KB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") setPhotoUrl(reader.result);
+    };
+    reader.onerror = () => setFileError("Could not read the file.");
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSuccessMessage(null);
+    if (!dirty) return;
+
+    const payload: { login?: string; photoUrl?: string | null } = {};
+    if (login !== user.login) payload.login = login.trim();
+    if (photoUrl !== (user.photoUrl ?? null)) payload.photoUrl = photoUrl;
+
+    try {
+      const response = await updateProfile(payload).unwrap();
+      setSuccessMessage(response.message);
+    } catch {
+      // surfaced via `error`
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex items-center gap-4">
+        <div className="w-20 h-20 rounded-full bg-white/10 border border-white/20 overflow-hidden flex items-center justify-center shrink-0">
+          {photoUrl ? (
+            <img
+              src={photoUrl}
+              alt="Avatar"
+              className="w-full h-full object-cover"
+              onError={() => setFileError("Could not load that image.")}
+            />
+          ) : (
+            <span className="text-3xl opacity-60">
+              {user.login.slice(0, 1).toUpperCase()}
+            </span>
+          )}
+        </div>
+        <div className="flex-1 space-y-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading}
+            className={secondaryButtonClass}
+          >
+            Upload from device
+          </button>
+          <button
+            type="button"
+            onClick={() => setPhotoUrl(null)}
+            disabled={isLoading || photoUrl === null}
+            className={secondaryButtonClass}
+          >
+            Remove photo
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFile}
+          className="hidden"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold opacity-70 mb-2">
+          Photo URL
+        </label>
+        <input
+          type="text"
+          value={photoUrl && !photoUrl.startsWith("data:") ? photoUrl : ""}
+          onChange={(e) => setPhotoUrl(e.target.value || null)}
+          disabled={isLoading}
+          className={inputClass}
+          placeholder="https://example.com/avatar.png"
+        />
+        {photoUrl?.startsWith("data:") && (
+          <p className="mt-1 text-xs opacity-60">
+            Currently using an uploaded image. Type a URL above to switch.
+          </p>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold opacity-70 mb-2">
+          Display name
+        </label>
+        <input
+          type="text"
+          value={login}
+          onChange={(e) => setLogin(e.target.value)}
+          disabled={isLoading}
+          className={inputClass}
+          placeholder="3-30 characters"
+          maxLength={30}
+        />
+      </div>
+
+      {(fileError || serverError) && (
+        <div className="p-3 text-sm text-red-200 bg-red-900/40 border border-red-500/30 rounded-xl">
+          {fileError || serverError}
+        </div>
+      )}
+      {successMessage && (
+        <div className="p-3 text-sm text-green-100 bg-green-900/40 border border-green-500/30 rounded-xl">
+          {successMessage}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={isLoading || !dirty}
+        className={primaryButtonClass}
+        style={{ background: "var(--color-fixed)" }}
+      >
+        {isLoading ? "Saving..." : "Save changes"}
+      </button>
+    </form>
   );
 }
 
@@ -297,7 +462,6 @@ function DeleteSection({
   onDeleted: () => void;
 }) {
   const [password, setPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [emailNotice, setEmailNotice] = useState<string | null>(null);
 
@@ -311,10 +475,6 @@ function DeleteSection({
 
   const handleDelete = async () => {
     setFormError(null);
-    if (confirmation !== "DELETE") {
-      setFormError('Type "DELETE" in the confirmation box to proceed.');
-      return;
-    }
     if (hasPassword && !password) {
       setFormError("Password is required to confirm deletion.");
       return;
@@ -370,20 +530,6 @@ function DeleteSection({
               className={inputClass}
               placeholder="Current password"
               autoComplete="current-password"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold opacity-70 mb-2">
-              Type DELETE to confirm
-            </label>
-            <input
-              type="text"
-              value={confirmation}
-              onChange={(e) => setConfirmation(e.target.value)}
-              disabled={isDeleting}
-              className={inputClass}
-              placeholder="DELETE"
-              autoComplete="off"
             />
           </div>
           <button

@@ -17,7 +17,8 @@ const allowedOrigins = (
   .map((origin: string) => origin.trim())
   .filter(Boolean);
 
-app.use(express.json());
+// 1 MB cap leaves room for base64-encoded avatar uploads without inviting abuse.
+app.use(express.json({ limit: "1mb" }));
 app.use(
   cors({
     origin: allowedOrigins,

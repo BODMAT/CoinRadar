@@ -53,6 +53,7 @@ model User {
   password       String?
   email          String?        @unique
   emailVerified  Boolean        @default(false)
+  photoUrl       String?
   wallets        Wallet[]
   refreshTokens  RefreshToken[]
   authIdentities AuthIdentity[]

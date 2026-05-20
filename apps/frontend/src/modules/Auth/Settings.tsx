@@ -17,12 +17,26 @@ export function Settings() {
     );
   };
 
+  const fallbackLetter = currentUser.login.slice(0, 1).toUpperCase();
+
   return (
     <button
       onClick={handleOpen}
-      className="flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[white] border-[white] border-2 max-w-[300px]"
+      title="Account settings"
+      className="flex items-center gap-2 px-3 py-1.5 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[white] border-[white] border-2"
     >
-      Settings
+      <span className="w-8 h-8 rounded-full bg-white/10 overflow-hidden flex items-center justify-center text-sm font-bold">
+        {currentUser.photoUrl ? (
+          <img
+            src={currentUser.photoUrl}
+            alt=""
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          fallbackLetter
+        )}
+      </span>
+      <span className="hidden sm:inline">Settings</span>
     </button>
   );
 }

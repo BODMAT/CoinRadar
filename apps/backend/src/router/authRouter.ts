@@ -18,6 +18,7 @@ import {
   deleteAccount,
   requestDeleteAccount,
   confirmDeleteAccount,
+  updateProfile,
 } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -34,6 +35,7 @@ authRouter.get("/me", protect, getCurrentUser);
 authRouter.post("/logout-all", protect, logoutAllUserSessions);
 authRouter.post("/set-password", protect, setPassword);
 authRouter.post("/send-one-time-password", protect, sendOneTimePassword);
+authRouter.patch("/me", protect, updateProfile);
 authRouter.delete("/account", protect, deleteAccount);
 authRouter.post("/account/request-delete", protect, requestDeleteAccount);
 authRouter.get("/account/confirm-delete", confirmDeleteAccount);
