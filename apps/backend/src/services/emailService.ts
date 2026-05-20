@@ -33,7 +33,9 @@ let transporter: Transporter | null = null;
 const getTransporter = (): Transporter => {
   if (transporter) return transporter;
 
-  if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
+  if (process.env.NODE_ENV === "test") {
+    transporter = nodemailer.createTransport({ jsonTransport: true });
+  } else if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
     transporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: SMTP_PORT,
