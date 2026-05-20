@@ -170,7 +170,9 @@ function ProfileSection({ user }: { user: UserSafe }) {
     try {
       const response = await updateProfile(payload).unwrap();
       setSuccessMessage(response.message);
-    } catch {}
+    } catch (error) {
+      console.error("Update profile failed:", error);
+    }
   };
 
   return (
@@ -250,7 +252,8 @@ function ProfileSection({ user }: { user: UserSafe }) {
           maxLength={30}
         />
         <p className="mt-1 text-xs opacity-60">
-          If this login is already taken, you will see a notification after saving.
+          If this login is already taken, you will see a notification after
+          saving.
         </p>
       </div>
 
@@ -321,7 +324,9 @@ function PasswordSection({
       setPassword("");
       setConfirm("");
       setTimeout(onDone, 1500);
-    } catch {}
+    } catch (error) {
+      console.error("Set password failed:", error);
+    }
   };
 
   return (
@@ -418,7 +423,9 @@ function OtpSection() {
     try {
       const response = await sendOtp().unwrap();
       setMessage(response.message);
-    } catch {}
+    } catch (error) {
+      console.error("Send OTP failed:", error);
+    }
   };
 
   return (
@@ -481,7 +488,9 @@ function DeleteSection({
     try {
       await deleteAccount(hasPassword ? { password } : {}).unwrap();
       onDeleted();
-    } catch {}
+    } catch (error) {
+      console.error("Delete account failed:", error);
+    }
   };
 
   const handleRequestEmail = async () => {
@@ -489,7 +498,9 @@ function DeleteSection({
     try {
       const response = await requestDelete().unwrap();
       setEmailNotice(response.message);
-    } catch {}
+    } catch (error) {
+      console.error("Request delete email failed:", error);
+    }
   };
 
   return (
