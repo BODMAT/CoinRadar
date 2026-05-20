@@ -1,5 +1,31 @@
 import request from "supertest";
+import prisma from "../../src/prisma.js";
 import { getApp, resetDatabase } from "../helpers/testUtils.js";
+
+const registerVerifyLogin = async (slug: string) => {
+  const login = `${slug}_${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+  const password = "password123";
+
+  const registerResponse = await request(getApp())
+    .post("/api/auth/register")
+    .send({ login, password, email: `${login}@mail.com` });
+  expect(registerResponse.status).toBe(201);
+  expect(registerResponse.body.requiresVerification).toBe(true);
+
+  await prisma.user.update({
+    where: { login },
+    data: { emailVerified: true },
+  });
+
+  const loginResponse = await request(getApp())
+    .post("/api/auth/login")
+    .send({ login, password });
+  expect(loginResponse.status).toBe(200);
+
+  const raw = loginResponse.headers["set-cookie"];
+  const cookies = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  return { login, cookies };
+};
 
 describe("Auth refresh rotation", () => {
   beforeEach(async () => {
@@ -7,24 +33,8 @@ describe("Auth refresh rotation", () => {
   });
 
   it("rotates refresh token and rejects old one", async () => {
-    const unique = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+    const { cookies: initialCookies } = await registerVerifyLogin("auth");
 
-    const registerResponse = await request(getApp())
-      .post("/api/auth/register")
-      .send({
-        login: `auth_${unique}`,
-        password: "password123",
-        email: `auth_${unique}@mail.com`,
-      });
-
-    expect(registerResponse.status).toBe(201);
-
-    const initialCookiesRaw = registerResponse.headers["set-cookie"];
-    const initialCookies = Array.isArray(initialCookiesRaw)
-      ? initialCookiesRaw
-      : initialCookiesRaw
-        ? [initialCookiesRaw]
-        : [];
     expect(initialCookies.length).toBeGreaterThan(0);
     expect(initialCookies.join(";")).toContain("refresh_token=");
 
@@ -33,11 +43,11 @@ describe("Auth refresh rotation", () => {
       .set("Cookie", initialCookies);
 
     expect(refreshResponse.status).toBe(200);
-    const rotatedCookiesRaw = refreshResponse.headers["set-cookie"];
-    const rotatedCookies = Array.isArray(rotatedCookiesRaw)
-      ? rotatedCookiesRaw
-      : rotatedCookiesRaw
-        ? [rotatedCookiesRaw]
+    const rotatedRaw = refreshResponse.headers["set-cookie"];
+    const rotatedCookies = Array.isArray(rotatedRaw)
+      ? rotatedRaw
+      : rotatedRaw
+        ? [rotatedRaw]
         : [];
     expect(rotatedCookies.length).toBeGreaterThan(0);
     expect(rotatedCookies.join(";")).toContain("refresh_token=");
@@ -50,25 +60,7 @@ describe("Auth refresh rotation", () => {
   });
 
   it("returns current user via cookie-authenticated /auth/me", async () => {
-    const unique = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-    const login = `me_${unique}`;
-
-    const registerResponse = await request(getApp())
-      .post("/api/auth/register")
-      .send({
-        login,
-        password: "password123",
-        email: `me_${unique}@mail.com`,
-      });
-
-    expect(registerResponse.status).toBe(201);
-
-    const cookiesRaw = registerResponse.headers["set-cookie"];
-    const cookies = Array.isArray(cookiesRaw)
-      ? cookiesRaw
-      : cookiesRaw
-        ? [cookiesRaw]
-        : [];
+    const { login, cookies } = await registerVerifyLogin("me");
 
     const meResponse = await request(getApp())
       .get("/api/auth/me")

@@ -27,7 +27,11 @@ function dateDaysAgo(daysAgo: number): Date {
 
 async function main() {
   await prisma.transaction.deleteMany();
+  await prisma.swapSettings.deleteMany();
   await prisma.wallet.deleteMany();
+  await prisma.emailToken.deleteMany();
+  await prisma.refreshToken.deleteMany();
+  await prisma.authIdentity.deleteMany();
   await prisma.user.deleteMany();
 
   const seedPassword = "Test12345";
@@ -39,25 +43,32 @@ async function main() {
       login: "bohdan",
       password: passwordHash,
       email: "bohdan@coinradar.local",
-      provider: "local",
+      emailVerified: true,
     },
     {
       id: randomUUID(),
       login: "natalia",
       password: passwordHash,
       email: "natalia@coinradar.local",
-      provider: "local",
+      emailVerified: true,
     },
     {
       id: randomUUID(),
       login: "taras",
       password: passwordHash,
       email: "taras@coinradar.local",
-      provider: "local",
+      emailVerified: true,
     },
   ];
 
   await prisma.user.createMany({ data: users });
+  await prisma.authIdentity.createMany({
+    data: users.map((user) => ({
+      id: randomUUID(),
+      userId: user.id,
+      provider: "local",
+    })),
+  });
 
   const wallets = users.flatMap((user) => [
     {
