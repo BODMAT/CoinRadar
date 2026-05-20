@@ -39,7 +39,7 @@ model Wallet {
   name      String   @default("hot")
   createdAt DateTime @default(now())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   transactions Transaction[]
   swapSettings SwapSettings?
