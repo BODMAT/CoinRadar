@@ -163,14 +163,14 @@ function ProfileSection({ user }: { user: UserSafe }) {
 
     const payload: { login?: string; photoUrl?: string | null } = {};
     if (login !== user.login) payload.login = login.trim();
-    if (photoUrl !== (user.photoUrl ?? null)) payload.photoUrl = photoUrl;
+    if (photoUrl !== (user.photoUrl ?? null)) {
+      payload.photoUrl = photoUrl === null ? null : photoUrl.trim();
+    }
 
     try {
       const response = await updateProfile(payload).unwrap();
       setSuccessMessage(response.message);
-    } catch {
-      // surfaced via `error`
-    }
+    } catch {}
   };
 
   return (
@@ -238,7 +238,7 @@ function ProfileSection({ user }: { user: UserSafe }) {
 
       <div>
         <label className="block text-sm font-semibold opacity-70 mb-2">
-          Display name
+          Change login
         </label>
         <input
           type="text"
@@ -246,9 +246,12 @@ function ProfileSection({ user }: { user: UserSafe }) {
           onChange={(e) => setLogin(e.target.value)}
           disabled={isLoading}
           className={inputClass}
-          placeholder="3-30 characters"
+          placeholder="Enter a new login (3-30 characters)"
           maxLength={30}
         />
+        <p className="mt-1 text-xs opacity-60">
+          If this login is already taken, you will see a notification after saving.
+        </p>
       </div>
 
       {(fileError || serverError) && (
@@ -318,9 +321,7 @@ function PasswordSection({
       setPassword("");
       setConfirm("");
       setTimeout(onDone, 1500);
-    } catch {
-      // server error surfaces via `error`
-    }
+    } catch {}
   };
 
   return (
@@ -417,9 +418,7 @@ function OtpSection() {
     try {
       const response = await sendOtp().unwrap();
       setMessage(response.message);
-    } catch {
-      // surfaced via `error`
-    }
+    } catch {}
   };
 
   return (
@@ -482,9 +481,7 @@ function DeleteSection({
     try {
       await deleteAccount(hasPassword ? { password } : {}).unwrap();
       onDeleted();
-    } catch {
-      // surfaced via `serverError`
-    }
+    } catch {}
   };
 
   const handleRequestEmail = async () => {
@@ -492,9 +489,7 @@ function DeleteSection({
     try {
       const response = await requestDelete().unwrap();
       setEmailNotice(response.message);
-    } catch {
-      // surfaced via `serverError`
-    }
+    } catch {}
   };
 
   return (
@@ -545,7 +540,7 @@ function DeleteSection({
         <>
           <p className="text-sm opacity-80">
             Your account has no password (Google sign-in only). We will email
-            you a confirmation link — click it to delete. The link expires in 1
+            you a confirmation link - click it to delete. The link expires in 1
             hour.
           </p>
           <button

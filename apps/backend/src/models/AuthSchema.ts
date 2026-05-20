@@ -11,10 +11,10 @@ export const UserSchema = z.object({
   email: z.string().email().nullable().optional(),
   emailVerified: z.boolean().optional(),
   hasPassword: z.boolean().optional(),
+  photoUrl: z.string().nullable().optional(),
 
-  token: z.string().optional(), // Access token
-
-  wallets: z.array(WalletListItemResponseSchema).optional(), // Optional (without - from auth service)
+  token: z.string().optional(),
+  wallets: z.array(WalletListItemResponseSchema).optional(),
 });
 
 export const RegisterSchema = z.object({
@@ -45,8 +45,6 @@ export const DeleteAccountSchema = z.object({
   password: z.string().min(1).optional(),
 });
 
-// photoUrl tolerates http(s) URLs and base64 data URLs alike; length caps
-// abuse via the 1 MB JSON body limit.
 export const UpdateProfileSchema = z.object({
   login: z
     .string()

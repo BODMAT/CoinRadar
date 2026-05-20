@@ -180,8 +180,6 @@ export function AuthPopup() {
         setStage("verifying");
       }
     } catch (err) {
-      // 403 on login means email not verified — switch to the verify screen
-      // with the right login pre-filled so resend works.
       if (
         err &&
         typeof err === "object" &&

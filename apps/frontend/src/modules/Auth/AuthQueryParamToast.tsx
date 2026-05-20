@@ -80,21 +80,16 @@ export function AuthQueryParamToast() {
     const matched = MESSAGES[authParam];
     if (matched) setNotice(matched);
 
-    // After account_deleted the cookies are already cleared on the server —
-    // wipe local auth state too so the UI immediately reflects sign-out.
     if (authParam === "account_deleted") {
       dispatch(logout());
       dispatch(clearWalletState());
       dispatch(authApi.util.resetApiState());
     }
 
-    // After merge_confirmed the server opened a session — refetch /me so
-    // redux picks up the user.
     if (authParam === "merge_confirmed" || authParam === "google_success") {
       dispatch(authApi.util.invalidateTags(["User"]));
     }
 
-    // Scrub the param so refresh does not re-trigger the toast.
     params.delete("auth");
     const next =
       window.location.pathname +
@@ -103,8 +98,6 @@ export function AuthQueryParamToast() {
     window.history.replaceState({}, "", next);
   }, [dispatch]);
 
-  // Auto-dismiss runs off `notice` so StrictMode's unmount/remount does not
-  // cancel the timer without re-scheduling it.
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(() => setNotice(null), 5000);

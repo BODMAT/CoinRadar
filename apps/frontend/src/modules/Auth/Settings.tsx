@@ -36,7 +36,7 @@ export function Settings() {
           fallbackLetter
         )}
       </span>
-      <span className="hidden sm:inline">Settings</span>
+      <span>{currentUser.login}</span>
     </button>
   );
 }

@@ -25,7 +25,7 @@ import {
 const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 const MERGE_TOKEN_TTL_MS = 60 * 60 * 1000;
 const DELETE_TOKEN_TTL_MS = 60 * 60 * 1000;
-const OTP_BYTES = 12; // ~16 base64url chars
+const OTP_BYTES = 12;
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
@@ -92,6 +92,19 @@ const parseCookieHeader = (cookieHeader?: string): Record<string, string> => {
       }
       return acc;
     }, {});
+};
+
+const getUserIdFromAccessCookie = (req: Request): string | null => {
+  const cookies = parseCookieHeader(req.headers.cookie);
+  const accessToken = cookies[ACCESS_COOKIE_NAME];
+  if (!accessToken || !JWT_SECRET) return null;
+
+  try {
+    const decoded = jwt.verify(accessToken, JWT_SECRET) as { userId?: string };
+    return decoded.userId ?? null;
+  } catch {
+    return null;
+  }
 };
 
 const hashToken = (token: string): string => {
@@ -206,8 +219,6 @@ const createEmailToken = async (
   ttlMs: number,
   metadata?: Prisma.InputJsonValue,
 ): Promise<{ rawToken: string; expiresAt: Date }> => {
-  // Invalidate any prior un-consumed tokens of the same purpose for this user
-  // so each new email link supersedes the previous one.
   await prisma.emailToken.deleteMany({
     where: { userId, purpose, consumedAt: null },
   });
@@ -392,9 +403,6 @@ export const registerUser = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     const newUser = await prisma.$transaction(async (tx) => {
-      // Drop any prior unverified records holding the same login or email so
-      // (a) the legit owner can recover from a typo and (b) attackers cannot
-      // squat someone else's login by registering and never confirming.
       await tx.user.deleteMany({
         where: {
           emailVerified: false,
@@ -428,7 +436,6 @@ export const registerUser = async (req: Request, res: Response) => {
       await sendVerificationEmail(email, rawToken);
     } catch (mailError) {
       console.error("Failed to send verification email:", mailError);
-      // Account is created but email failed — user can use /resend-verification.
     }
 
     return res.status(201).json({
@@ -542,7 +549,6 @@ export const verifyGoogleMerge = async (req: Request, res: Response) => {
       return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
     }
 
-    // Refuse if this google identity is already attached to a different user.
     const conflicting = await prisma.authIdentity.findUnique({
       where: {
         provider_providerId: { provider: "google", providerId: metadata.sub },
@@ -589,7 +595,6 @@ export const resendVerification = async (req: Request, res: Response) => {
 
     const user = await prisma.user.findFirst({ where: { login } });
 
-    // Always answer generically — do not leak whether the login exists.
     const genericResponse = {
       message:
         "If an account exists for that login and is unverified, a new verification email is on the way.",
@@ -693,10 +698,32 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
       });
 
       if (existingByEmail) {
-        // Never auto-link a Google identity into an existing account, even if
-        // both sides are verified — proof-of-control over the email right now
-        // is required. Issue a short-lived merge token and email it to the
-        // address on file; the user attaches Google only by clicking it.
+        const authUserId = getUserIdFromAccessCookie(req);
+        const isSameAuthenticatedUser =
+          authUserId !== null && authUserId === existingByEmail.id;
+
+        if (isSameAuthenticatedUser) {
+          await prisma.authIdentity.upsert({
+            where: {
+              userId_provider: {
+                userId: existingByEmail.id,
+                provider: "google",
+              },
+            },
+            create: {
+              userId: existingByEmail.id,
+              provider: "google",
+              providerId: profile.sub,
+            },
+            update: {
+              providerId: profile.sub,
+            },
+          });
+
+          user = existingByEmail;
+          await createSession(user, req, res);
+          return res.redirect(`${FRONTEND_URL}?auth=google_success`);
+        }
         if (!profile.emailVerified || !existingByEmail.email) {
           return res.redirect(`${FRONTEND_URL}?auth=google_error`);
         }
@@ -1156,8 +1183,9 @@ export const updateProfile = async (req: Request, res: Response) => {
       data.login = parsed.login;
     }
     if (parsed.photoUrl !== undefined) {
-      // Treat an empty string as "clear the photo".
-      data.photoUrl = parsed.photoUrl === "" ? null : parsed.photoUrl;
+      const normalizedPhotoUrl =
+        parsed.photoUrl === null ? null : parsed.photoUrl.trim();
+      data.photoUrl = normalizedPhotoUrl === "" ? null : normalizedPhotoUrl;
     }
 
     let updated;
@@ -1184,12 +1212,6 @@ export const updateProfile = async (req: Request, res: Response) => {
       throw e;
     }
 
-    // Login is encoded in the access JWT — re-sign it so this device picks up
-    // the new value on its next protected call without waiting for refresh.
-    if (parsed.login !== undefined && parsed.login !== updated.login) {
-      // updated.login already reflects the new value; this branch is just a
-      // belt-and-suspenders check, the actual cookie reset happens below.
-    }
     if (parsed.login !== undefined) {
       const newAccess = signAccessToken(updated.id, updated.login);
       res.cookie(ACCESS_COOKIE_NAME, newAccess, {

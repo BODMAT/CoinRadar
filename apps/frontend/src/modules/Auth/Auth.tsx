@@ -20,7 +20,7 @@ export function Auth() {
       onClick={handleOpenPopup}
       className="flex justify-center items-center text-center px-9 py-2 bg-(--color-card) cursor-pointer rounded transitioned hover:scale-105 text-[white] border-[white] border-2 max-w-[300px] overflow-x-auto"
     >
-      {currentUser ? (currentUser.login ?? "Authenticated") : "Sign in"}
+      {currentUser ? "Signed in" : "Sign in"}
     </button>
   );
 }
