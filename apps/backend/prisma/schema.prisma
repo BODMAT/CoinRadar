@@ -45,7 +45,7 @@ model Wallet {
   transactions Transaction[]
   swapSettings SwapSettings?
 
-  @@unique([name, userId]) //Композитний унікальний індекс - в межах одного користувача (userId)
+  @@unique([name, userId]) // Composite unique index within one user (userId)
 }
 
 model User {
@@ -81,3 +81,4 @@ model SwapSettings {
   stableCoins String[] @default(["usdt", "usdc"])
   wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
 }
+

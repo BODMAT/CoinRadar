@@ -1,6 +1,6 @@
 import { Request } from "express";
 
-// Розширюю стандартний інтерфейс Request додавши поле user з middleware
+// Extend the standard Request interface with userId from auth middleware.
 declare module "express" {
   export interface Request {
     userId?: string;

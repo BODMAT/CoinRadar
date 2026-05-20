@@ -213,7 +213,7 @@ export const transactionApi = createApi({
       },
       providesTags: (_, __, { walletId }) => [
         { type: "Transaction", id: "LIST" },
-        { type: "Transaction", id: `CHART-${walletId}` }, // Специфічний тег
+        { type: "Transaction", id: `CHART-${walletId}` }, // Specific chart tag
       ],
       transformResponse: (response: unknown) => {
         return CoinForChartArraySchema.parse(response);
@@ -234,3 +234,4 @@ export const {
   useGetCoinStatsQuery,
   useGetGroupedTransactionsForChartQuery,
 } = transactionApi;
+

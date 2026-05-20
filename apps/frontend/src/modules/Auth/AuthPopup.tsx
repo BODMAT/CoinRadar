@@ -24,6 +24,7 @@ export function AuthPopup() {
     "https://coinradar-wmzg.onrender.com/api/";
 
   const [isLoginMode, setIsLoginMode] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [logoutUser] = useLogoutUserMutation();
   const [loginData, setLoginData] = useState<Login>({
     login: "",
@@ -173,7 +174,7 @@ export function AuthPopup() {
             Password
           </label>
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             name="password"
             value={formData.password}
             onChange={handleChange}
@@ -183,6 +184,42 @@ export function AuthPopup() {
                                      text-(--color-text) transitioned hover:bg-white/20 dark:hover:bg-black/30 placeholder-gray-400"
             placeholder="Enter your password"
           />
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={() => setShowPassword((prev) => !prev)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            title={showPassword ? "Hide password" : "Show password"}
+            className="absolute right-3 top-[2.35rem] p-1 rounded-md opacity-75 hover:opacity-100 hover:bg-white/10 cursor-pointer disabled:cursor-not-allowed transition-colors"
+          >
+            {showPassword ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="w-5 h-5"
+              >
+                <path d="M3 3l18 18" />
+                <path d="M10.58 10.58a2 2 0 102.83 2.83" />
+                <path d="M9.88 5.09A10.94 10.94 0 0112 5c5 0 9.27 3.11 11 7-1 2.24-2.76 4.14-5 5.31" />
+                <path d="M6.61 6.61C4.62 7.85 3.06 9.74 2 12c1.73 3.89 6 7 10 7 1.61 0 3.17-.36 4.61-1.01" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="w-5 h-5"
+              >
+                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            )}
+          </button>
           {formErrors.password && (
             <p className="mt-1 text-xs text-red-400 font-semibold ml-1">
               {formErrors.password}
