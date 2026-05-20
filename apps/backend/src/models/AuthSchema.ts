@@ -34,3 +34,12 @@ export const LoginSchema = z.object({
 export const ResendVerificationSchema = z.object({
   login: z.string().trim().min(3, "Login is required").max(30),
 });
+
+export const SetPasswordSchema = z.object({
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  oldPassword: z.string().min(1).optional(),
+});
+
+export const DeleteAccountSchema = z.object({
+  password: z.string().min(1).optional(),
+});

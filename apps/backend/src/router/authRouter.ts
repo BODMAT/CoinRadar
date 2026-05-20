@@ -13,6 +13,11 @@ import {
   logoutUser,
   logoutAllUserSessions,
   getCurrentUser,
+  setPassword,
+  sendOneTimePassword,
+  deleteAccount,
+  requestDeleteAccount,
+  confirmDeleteAccount,
 } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -27,5 +32,10 @@ authRouter.post("/refresh", refreshSession);
 authRouter.post("/logout", logoutUser);
 authRouter.get("/me", protect, getCurrentUser);
 authRouter.post("/logout-all", protect, logoutAllUserSessions);
+authRouter.post("/set-password", protect, setPassword);
+authRouter.post("/send-one-time-password", protect, sendOneTimePassword);
+authRouter.delete("/account", protect, deleteAccount);
+authRouter.post("/account/request-delete", protect, requestDeleteAccount);
+authRouter.get("/account/confirm-delete", confirmDeleteAccount);
 
 export default authRouter;

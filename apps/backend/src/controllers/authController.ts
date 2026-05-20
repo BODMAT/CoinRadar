@@ -9,16 +9,22 @@ import {
   RegisterSchema,
   LoginSchema,
   ResendVerificationSchema,
+  SetPasswordSchema,
+  DeleteAccountSchema,
   UserSchema,
 } from "../models/AuthSchema.js";
 import { handleZodError } from "../utils/helpers.js";
 import {
   sendVerificationEmail,
   sendGoogleMergeConfirmationEmail,
+  sendOneTimePasswordEmail,
+  sendAccountDeletionEmail,
 } from "../services/emailService.js";
 
 const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 const MERGE_TOKEN_TTL_MS = 60 * 60 * 1000;
+const DELETE_TOKEN_TTL_MS = 60 * 60 * 1000;
+const OTP_BYTES = 12; // ~16 base64url chars
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
@@ -915,5 +921,227 @@ export const getCurrentUser = async (req: Request, res: Response) => {
     return res
       .status(500)
       .json({ error: "Server error during current user fetch." });
+  }
+};
+
+export const setPassword = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    const { password, oldPassword } = SetPasswordSchema.parse(req.body);
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    if (user.password) {
+      if (!oldPassword) {
+        return res
+          .status(400)
+          .json({ error: "Current password is required to change it." });
+      }
+      const match = await bcrypt.compare(oldPassword, user.password);
+      if (!match) {
+        return res.status(401).json({ error: "Current password is wrong." });
+      }
+    }
+
+    const hashed = await bcrypt.hash(password, saltRounds);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { password: hashed },
+      });
+      await tx.authIdentity.upsert({
+        where: {
+          userId_provider: { userId, provider: "local" },
+        },
+        create: { userId, provider: "local" },
+        update: {},
+      });
+    });
+
+    return res.status(200).json({
+      message: user.password
+        ? "Password updated."
+        : "Password set. You can now sign in with login and password.",
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return handleZodError(res, error);
+    }
+    console.error("Set password error:", error);
+    return res
+      .status(500)
+      .json({ error: "Server error during password change." });
+  }
+};
+
+export const sendOneTimePassword = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+    if (!user.email) {
+      return res
+        .status(400)
+        .json({ error: "Account has no email to deliver the password to." });
+    }
+
+    const otp = crypto.randomBytes(OTP_BYTES).toString("base64url");
+    const hashed = await bcrypt.hash(otp, saltRounds);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: { password: hashed },
+      });
+      await tx.authIdentity.upsert({
+        where: { userId_provider: { userId, provider: "local" } },
+        create: { userId, provider: "local" },
+        update: {},
+      });
+    });
+
+    try {
+      await sendOneTimePasswordEmail(user.email, otp);
+    } catch (mailError) {
+      console.error("Failed to send one-time password email:", mailError);
+      return res
+        .status(502)
+        .json({ error: "Failed to deliver the one-time password email." });
+    }
+
+    return res.status(200).json({
+      message:
+        "A one-time password has been sent to your email. Use it to sign in and change it from your account settings.",
+    });
+  } catch (error) {
+    console.error("Send OTP error:", error);
+    return res.status(500).json({ error: "Server error during OTP send." });
+  }
+};
+
+export const deleteAccount = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    const { password } = DeleteAccountSchema.parse(req.body ?? {});
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    if (user.password) {
+      if (!password) {
+        return res
+          .status(400)
+          .json({ error: "Password is required to delete the account." });
+      }
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) {
+        return res.status(401).json({ error: "Password is wrong." });
+      }
+    } else {
+      return res.status(409).json({
+        error:
+          "This account has no password. Request an email confirmation via /auth/account/request-delete.",
+        requiresEmailConfirmation: true,
+      });
+    }
+
+    await prisma.user.delete({ where: { id: userId } });
+    clearAuthCookies(res);
+    return res.status(200).json({ message: "Account deleted." });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return handleZodError(res, error);
+    }
+    console.error("Delete account error:", error);
+    return res
+      .status(500)
+      .json({ error: "Server error during account deletion." });
+  }
+};
+
+export const requestDeleteAccount = async (req: Request, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+    if (!user.email) {
+      return res
+        .status(400)
+        .json({ error: "Account has no email to send confirmation to." });
+    }
+
+    const { rawToken } = await createEmailToken(
+      user.id,
+      "delete_account",
+      DELETE_TOKEN_TTL_MS,
+    );
+
+    try {
+      await sendAccountDeletionEmail(user.email, rawToken);
+    } catch (mailError) {
+      console.error("Failed to send delete confirmation email:", mailError);
+      return res
+        .status(502)
+        .json({ error: "Failed to deliver the confirmation email." });
+    }
+
+    return res.status(200).json({
+      message:
+        "Account deletion confirmation has been sent to your email. The link expires in 1 hour.",
+    });
+  } catch (error) {
+    console.error("Request delete error:", error);
+    return res
+      .status(500)
+      .json({ error: "Server error during delete request." });
+  }
+};
+
+export const confirmDeleteAccount = async (req: Request, res: Response) => {
+  try {
+    const token = typeof req.query.token === "string" ? req.query.token : "";
+    if (!token) {
+      return res.redirect(`${FRONTEND_URL}?auth=delete_error`);
+    }
+
+    const result = await consumeEmailToken(token, "delete_account");
+    if (!result.ok) {
+      const param =
+        result.reason === "already_used" ? "already_deleted" : "delete_error";
+      return res.redirect(`${FRONTEND_URL}?auth=${param}`);
+    }
+
+    await prisma.user.delete({ where: { id: result.userId } });
+    clearAuthCookies(res);
+    return res.redirect(`${FRONTEND_URL}?auth=account_deleted`);
+  } catch (error) {
+    console.error("Confirm delete error:", error);
+    return res.redirect(`${FRONTEND_URL}?auth=delete_error`);
   }
 };
