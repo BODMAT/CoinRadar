@@ -30,6 +30,7 @@ module.exports = async () => {
   const backendRoot = path.resolve(__dirname, '../..');
 
   process.env.DATABASE_URL = databaseUrl;
+  process.env.DIRECT_URL = databaseUrl;
   process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-access-secret';
   process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'test-refresh-secret';
   process.env.FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -37,11 +38,12 @@ module.exports = async () => {
   process.env.COOKIE_SAME_SITE = process.env.COOKIE_SAME_SITE || 'lax';
   process.env.NODE_ENV = 'test';
 
-  execSync('npx prisma db push --skip-generate --schema=./prisma/schema.prisma', {
+  execSync('npx prisma db push --schema=./prisma/schema.prisma', {
     cwd: backendRoot,
     env: {
       ...process.env,
       DATABASE_URL: databaseUrl,
+      DIRECT_URL: databaseUrl,
     },
     stdio: 'inherit',
   });
