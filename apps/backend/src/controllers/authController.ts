@@ -387,6 +387,16 @@ export const registerUser = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     const newUser = await prisma.$transaction(async (tx) => {
+      // Drop any prior unverified records holding the same login or email so
+      // (a) the legit owner can recover from a typo and (b) attackers cannot
+      // squat someone else's login by registering and never confirming.
+      await tx.user.deleteMany({
+        where: {
+          emailVerified: false,
+          OR: [{ login }, { email }],
+        },
+      });
+
       const user = await tx.user.create({
         data: {
           login,
