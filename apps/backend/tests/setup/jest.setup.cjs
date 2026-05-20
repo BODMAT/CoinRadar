@@ -13,6 +13,11 @@ if (!process.env.DATABASE_URL) {
 
 jest.setTimeout(120000);
 
+beforeEach(() => {
+  const { __resetCapturedEmails } = require("../../src/services/emailService");
+  __resetCapturedEmails();
+});
+
 afterAll(async () => {
   const prisma = require("../../src/prisma").default;
   await prisma.$disconnect();
