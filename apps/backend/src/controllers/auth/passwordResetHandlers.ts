@@ -28,15 +28,9 @@ export const forgotPassword = async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({ where: { email } });
 
     // Always 200 — never reveal whether email is registered.
+    // Google-only accounts can also use this flow to set their first local password;
+    // resetPassword upserts the local identity on the way through.
     if (!user || !user.emailVerified) {
-      return res.status(200).json(GENERIC_OK);
-    }
-
-    // Google-only accounts have no local identity — they cannot reset a password.
-    const localIdentity = await prisma.authIdentity.findFirst({
-      where: { userId: user.id, provider: "local" },
-    });
-    if (!localIdentity) {
       return res.status(200).json(GENERIC_OK);
     }
 
