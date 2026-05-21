@@ -67,6 +67,7 @@ export function AccountSettingsPopup() {
       {section === "password" && (
         <PasswordSection
           hasPassword={hasPassword}
+          userEmail={currentUser.email}
           onDone={() => dispatch(closePopup())}
         />
       )}

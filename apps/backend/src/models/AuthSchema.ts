@@ -22,13 +22,14 @@ export const RegisterSchema = z.object({
     .string()
     .trim()
     .min(3, "Login must be at least 3 characters")
-    .max(30),
+    .max(30)
+    .regex(/^[^@]+$/, "Login cannot contain @"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   email: z.string().email("Invalid email format"),
 });
 
 export const LoginSchema = z.object({
-  login: z.string().trim().min(3, "Login is required"),
+  login: z.string().trim().min(1, "Login or email is required"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -45,6 +46,15 @@ export const DeleteAccountSchema = z.object({
   password: z.string().min(1).optional(),
 });
 
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email format"),
+});
+
+export const ResetPasswordSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 // photoUrl accepts http(s) URLs and base64 image data URLs only; rejects
 // arbitrary schemes (e.g. javascript:) so the value is always safe in <img src>.
 const PHOTO_URL_REGEX =
@@ -56,6 +66,7 @@ export const UpdateProfileSchema = z.object({
     .trim()
     .min(3, "Login must be at least 3 characters")
     .max(30)
+    .regex(/^[^@]+$/, "Login cannot contain @")
     .optional(),
   photoUrl: z
     .string()
