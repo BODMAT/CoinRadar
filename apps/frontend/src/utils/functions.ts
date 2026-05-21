@@ -91,6 +91,26 @@ export const formatPrice = (num: number | string) => {
   }
 };
 
+export const extractApiErrorMessage = (
+  error: unknown,
+  fallback = "Failed",
+): string => {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "data" in error &&
+    typeof (error as { data?: unknown }).data === "object" &&
+    (error as { data?: unknown }).data !== null &&
+    "error" in
+      ((error as { data?: unknown }).data as Record<string, unknown>) &&
+    typeof ((error as { data?: unknown }).data as Record<string, unknown>)
+      .error === "string"
+  ) {
+    return ((error as { data?: unknown }).data as { error: string }).error;
+  }
+  return fallback;
+};
+
 export const getLocalDatetime = (dateInput?: string | Date): string => {
   let date: Date;
   if (dateInput === undefined) {

@@ -7,7 +7,11 @@ import {
   useGetCoinStatsQuery,
 } from "./transaction.api";
 import { useCreateSwapMutation, useGetSwapSettingsQuery } from "./swap.api";
-import { getLocalDatetime } from "../../utils/functions";
+import {
+  extractApiErrorMessage,
+  getLocalDatetime,
+} from "../../utils/functions";
+import { TransactionFormFields } from "./TransactionFormFields";
 
 export function AddTransactionPopup({ coin }: { coin: Coin }) {
   const dispatch = useAppDispatch();
@@ -150,19 +154,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
         );
       }, 300);
     } catch (error: unknown) {
-      const message =
-        typeof error === "object" &&
-        error !== null &&
-        "data" in error &&
-        typeof (error as { data?: unknown }).data === "object" &&
-        (error as { data?: unknown }).data !== null &&
-        "error" in
-          ((error as { data?: unknown }).data as Record<string, unknown>) &&
-        typeof ((error as { data?: unknown }).data as Record<string, unknown>)
-          .error === "string"
-          ? ((error as { data?: unknown }).data as { error: string }).error
-          : "Failed to process transaction";
-      setAlert(message);
+      setAlert(extractApiErrorMessage(error, "Failed to process transaction"));
     }
   };
 
@@ -207,98 +199,35 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
           handleSubmit();
         }}
       >
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-bold">Type</label>
-          <select
-            required
-            name="buyOrSell"
-            value={form.buyOrSell}
-            onChange={handleChange}
-            className={`p-2 border-2 rounded font-bold ${form.buyOrSell === "buy" ? "border-green-500 text-green-600" : "border-red-500 text-red-600"}`}
-          >
-            <option value="buy">Buy</option>
-            <option value="sell">Sell</option>
-          </select>
-        </div>
-
-        {swapEnabled &&
-          (form.buyOrSell === "buy" || form.buyOrSell === "sell") && (
-            <div className="flex items-center justify-between gap-3 p-2 border-2 border-gray-300 rounded">
-              <label className="text-sm font-bold">
-                {form.buyOrSell === "buy"
-                  ? `Pay with ${activeStableCoin} (Swap)`
-                  : `Receive ${activeStableCoin} (Swap)`}
-              </label>
-              <input
-                type="checkbox"
-                checked={payWithSwap}
-                onChange={(e) => {
-                  setAlert(null);
-                  setPayWithSwap(e.target.checked);
-                }}
-                className="w-4 h-4 cursor-pointer"
-              />
-            </div>
-          )}
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-bold">Price</label>
-            <input
-              required
-              className="p-2 border-2 border-gray-300 rounded focus:border-blue-500 outline-none"
-              type="text"
-              name="price"
-              value={form.price}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-bold">Quantity</label>
-            <input
-              required
-              className="p-2 border-2 border-gray-300 rounded focus:border-blue-500 outline-none"
-              type="text"
-              name="quantity"
-              value={form.quantity}
-              onChange={handleChange}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-bold">Total</label>
-          <input
-            required
-            className="p-2 border-2 border-gray-200 rounded"
-            type="text"
-            name="total_price"
-            value={form.total_price}
-            onChange={handleChange}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-bold">Date</label>
-          <input
-            required
-            className="p-2 border-2 border-gray-300 rounded text-white [&::-webkit-calendar-picker-indicator]:invert
-    [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-            type="datetime-local"
-            name="createdAt"
-            value={form.createdAt}
-            onChange={handleChange}
-            max={maxDateTime}
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={!form.quantity || isLoading}
-          className="mt-2 p-3 bg-black text-white rounded-lg font-bold hover:opacity-80 disabled:opacity-50 transition-all"
-        >
-          {isLoading ? "Adding..." : "Add Transaction"}
-        </button>
+        <TransactionFormFields
+          form={form}
+          onChange={handleChange}
+          maxDateTime={maxDateTime}
+          isLoading={isLoading}
+          submitLabel="Add Transaction"
+          loadingLabel="Adding..."
+          swapSlot={
+            swapEnabled &&
+            (form.buyOrSell === "buy" || form.buyOrSell === "sell") ? (
+              <div className="flex items-center justify-between gap-3 p-2 border-2 border-gray-300 rounded">
+                <label className="text-sm font-bold">
+                  {form.buyOrSell === "buy"
+                    ? `Pay with ${activeStableCoin} (Swap)`
+                    : `Receive ${activeStableCoin} (Swap)`}
+                </label>
+                <input
+                  type="checkbox"
+                  checked={payWithSwap}
+                  onChange={(e) => {
+                    setAlert(null);
+                    setPayWithSwap(e.target.checked);
+                  }}
+                  className="w-4 h-4 cursor-pointer"
+                />
+              </div>
+            ) : null
+          }
+        />
       </form>
     </div>
   );

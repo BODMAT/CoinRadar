@@ -9,11 +9,13 @@ import prisma from "../prisma.js";
 
 import {
   getWallets,
-  createWallet,
   getWallet,
+} from "../controllers/wallet/walletQueryHandlers.js";
+import {
+  createWallet,
   updateWallet,
   deleteWallet,
-} from "../controllers/walletController.js";
+} from "../controllers/wallet/walletMutationHandlers.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const walletRouter = express.Router();
