@@ -1,6 +1,10 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useForgotPasswordMutation } from "../auth.api";
-import { extractServerError, inputClass, secondaryButtonClass } from "../auth.utils";
+import {
+  extractServerError,
+  inputClass,
+  secondaryButtonClass,
+} from "../auth.utils";
 
 interface Props {
   onBack: () => void;

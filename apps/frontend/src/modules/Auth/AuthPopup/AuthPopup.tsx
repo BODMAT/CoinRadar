@@ -168,7 +168,7 @@ export function AuthPopup() {
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="relative group">
           <label className="block text-sm font-semibold opacity-70 mb-2">
-            Login Name
+            {isLoginMode ? "Login or Email" : "Login Name"}
           </label>
           <input
             type="text"
@@ -177,7 +177,11 @@ export function AuthPopup() {
             onChange={handleChange}
             disabled={isLoading}
             className={inputClass}
-            placeholder="Enter your login name"
+            placeholder={
+              isLoginMode
+                ? "Enter your login or email"
+                : "Enter your login name"
+            }
           />
           {formErrors.login && (
             <p className="mt-1 text-xs text-red-400 font-semibold ml-1">

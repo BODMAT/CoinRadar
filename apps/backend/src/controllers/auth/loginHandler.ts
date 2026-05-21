@@ -9,10 +9,11 @@ import { createSession, toSafeUserResponse } from "./authHelpers.js";
 
 export const loginUser = async (req: Request, res: Response) => {
   try {
-    const { login, password } = LoginSchema.parse(req.body);
+    const { login: identifier, password } = LoginSchema.parse(req.body);
 
+    const isEmail = identifier.includes("@");
     const user = await prisma.user.findFirst({
-      where: { login },
+      where: isEmail ? { email: identifier } : { login: identifier },
       include: userInclude,
     });
 

@@ -7,9 +7,7 @@ import {
   ResetPasswordSchema,
 } from "../../models/AuthSchema.js";
 import { handleZodError } from "../../utils/helpers.js";
-import {
-  sendPasswordResetEmail,
-} from "../../services/emailService.js";
+import { sendPasswordResetEmail } from "../../services/emailService.js";
 import { saltRounds } from "./authConfig.js";
 import {
   createEmailToken,
@@ -93,7 +91,9 @@ export const resetPassword = async (req: Request, res: Response) => {
       });
     });
 
-    return res.status(200).json({ message: "Password has been reset. You can now sign in." });
+    return res
+      .status(200)
+      .json({ message: "Password has been reset. You can now sign in." });
   } catch (error) {
     if (error instanceof z.ZodError) return handleZodError(res, error);
     console.error("Reset password error:", error);

@@ -129,7 +129,14 @@ The link expires in 1 hour. If you did not request this, ignore this email.`;
 <p>The link expires in 1 hour. If you did not request this, ignore this email.</p>`,
   );
 
-  return dispatch({ to, subject, purpose: "reset_password", text, html, token });
+  return dispatch({
+    to,
+    subject,
+    purpose: "reset_password",
+    text,
+    html,
+    token,
+  });
 };
 
 // Test helpers - only meaningful when NODE_ENV === "test".
