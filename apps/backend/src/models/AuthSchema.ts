@@ -45,6 +45,15 @@ export const DeleteAccountSchema = z.object({
   password: z.string().min(1).optional(),
 });
 
+export const ForgotPasswordSchema = z.object({
+  email: z.string().email("Invalid email format"),
+});
+
+export const ResetPasswordSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 // photoUrl accepts http(s) URLs and base64 image data URLs only; rejects
 // arbitrary schemes (e.g. javascript:) so the value is always safe in <img src>.
 const PHOTO_URL_REGEX =

@@ -1,11 +1,11 @@
 import crypto from "node:crypto";
 import prisma from "../../prisma.js";
 import { hashToken } from "./authHelpers.js";
-import { EMAIL_VERIFY_TTL_MS } from "./authConfig.js";
+import { EMAIL_VERIFY_TTL_MS, PASSWORD_RESET_TTL_MS } from "./authConfig.js";
 
-export type EmailTokenPurpose = "verify_email";
+export type EmailTokenPurpose = "verify_email" | "reset_password";
 
-export { EMAIL_VERIFY_TTL_MS };
+export { EMAIL_VERIFY_TTL_MS, PASSWORD_RESET_TTL_MS };
 
 export const createEmailToken = async (
   userId: string,

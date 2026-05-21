@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import type { SignOptions } from "jsonwebtoken";
 
 export const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+export const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 export const JWT_SECRET = process.env.JWT_SECRET;
 export const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;

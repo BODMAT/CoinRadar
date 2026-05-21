@@ -16,8 +16,9 @@ import {
 } from "../auth.utils";
 import { SignedInView } from "./SignedInView";
 import { VerifyingStage } from "./VerifyingStage";
+import { ForgotPasswordStage } from "./ForgotPasswordStage";
 
-type Stage = "signin" | "signup" | "verifying";
+type Stage = "signin" | "signup" | "verifying" | "forgot";
 type FormKeys = "login" | "password" | "email";
 type FormErrors = Partial<Record<FormKeys, string>>;
 
@@ -148,6 +149,10 @@ export function AuthPopup() {
     );
   }
 
+  if (stage === "forgot") {
+    return <ForgotPasswordStage onBack={() => setStage("signin")} />;
+  }
+
   return (
     <div className="fontText w-full max-w-md mx-auto">
       <h2 className="fontTitle text-5xl font-bold mb-8 text-center drop-shadow-sm">
@@ -213,6 +218,18 @@ export function AuthPopup() {
           autoComplete={isLoginMode ? "current-password" : "new-password"}
           error={formErrors.password}
         />
+
+        {isLoginMode && (
+          <div className="text-right -mt-1">
+            <button
+              type="button"
+              onClick={() => setStage("forgot")}
+              className="text-xs opacity-60 hover:opacity-100 hover:underline underline-offset-4 decoration-purple-400 transition-opacity cursor-pointer"
+            >
+              Forgot password?
+            </button>
+          </div>
+        )}
 
         <div className="pt-4">
           <button

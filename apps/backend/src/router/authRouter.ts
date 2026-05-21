@@ -22,6 +22,10 @@ import {
   deleteAccount,
   updateProfile,
 } from "../controllers/auth/profileHandlers.js";
+import {
+  forgotPassword,
+  resetPassword,
+} from "../controllers/auth/passwordResetHandlers.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 authRouter.post("/register", registerUser);
@@ -37,5 +41,7 @@ authRouter.post("/logout-all", protect, logoutAllUserSessions);
 authRouter.post("/set-password", protect, setPassword);
 authRouter.patch("/me", protect, updateProfile);
 authRouter.delete("/account", protect, deleteAccount);
+authRouter.post("/forgot-password", forgotPassword);
+authRouter.post("/reset-password", resetPassword);
 
 export default authRouter;

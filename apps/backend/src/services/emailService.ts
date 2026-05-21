@@ -2,8 +2,9 @@ const EMAIL_FROM =
   process.env.EMAIL_FROM || "CoinRadar <no-reply@coinradar.local>";
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const API_PUBLIC_URL = process.env.API_PUBLIC_URL || "http://localhost:4000";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-export type EmailPurpose = "verify_email";
+export type EmailPurpose = "verify_email" | "reset_password";
 
 export interface SentEmailRecord {
   to: string;
@@ -107,6 +108,28 @@ The link expires in 24 hours. If you did not register, ignore this email.`;
   );
 
   return dispatch({ to, subject, purpose: "verify_email", text, html, token });
+};
+
+export const sendPasswordResetEmail = async (to: string, token: string) => {
+  const link = `${FRONTEND_URL}?auth=reset_password&token=${encodeURIComponent(token)}`;
+  const subject = "Reset your CoinRadar password";
+  const text = `You requested a password reset for your CoinRadar account.
+
+Click the link to set a new password:
+
+${link}
+
+The link expires in 1 hour. If you did not request this, ignore this email.`;
+  const html = wrapHtml(
+    "Reset your password",
+    `<p>You requested a password reset for your CoinRadar account.</p>
+<p>Click the button to set a new password:</p>
+<p><a href="${link}" style="display:inline-block;padding:12px 20px;background:#6d28d9;color:#fff;border-radius:8px;text-decoration:none">Reset password</a></p>
+<p style="font-size:12px;color:#666">Or open this link:<br/>${link}</p>
+<p>The link expires in 1 hour. If you did not request this, ignore this email.</p>`,
+  );
+
+  return dispatch({ to, subject, purpose: "reset_password", text, html, token });
 };
 
 // Test helpers - only meaningful when NODE_ENV === "test".

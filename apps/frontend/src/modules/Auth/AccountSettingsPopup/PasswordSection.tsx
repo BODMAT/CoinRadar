@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { useSetPasswordMutation } from "../auth.api";
+import { useSetPasswordMutation, useForgotPasswordMutation } from "../auth.api";
 import { PasswordField } from "../PasswordField";
 import { extractServerError } from "../auth.utils";
 
@@ -8,9 +8,11 @@ const primaryButtonClass =
 
 export function PasswordSection({
   hasPassword,
+  userEmail,
   onDone,
 }: {
   hasPassword: boolean;
+  userEmail?: string | null;
   onDone: () => void;
 }) {
   const [oldPassword, setOldPassword] = useState("");
@@ -18,8 +20,12 @@ export function PasswordSection({
   const [confirm, setConfirm] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [resetNotice, setResetNotice] = useState<string | null>(null);
+
   const [setPasswordMutation, { isLoading, error, isError }] =
     useSetPasswordMutation();
+  const [forgotPassword, { isLoading: isForgotLoading }] =
+    useForgotPasswordMutation();
 
   const serverError = isError ? extractServerError(error) : null;
 
@@ -55,6 +61,17 @@ export function PasswordSection({
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!userEmail) return;
+    setResetNotice(null);
+    try {
+      await forgotPassword({ email: userEmail }).unwrap();
+      setResetNotice(`Reset link sent to ${userEmail}`);
+    } catch {
+      setResetNotice("Could not send reset link. Please try again.");
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <p className="text-sm opacity-80">
@@ -68,6 +85,11 @@ export function PasswordSection({
           {successMessage}
         </div>
       )}
+      {resetNotice && (
+        <div className="p-3 text-sm text-purple-100 bg-purple-900/40 border border-purple-500/30 rounded-xl">
+          {resetNotice}
+        </div>
+      )}
       {(formError || serverError) && (
         <div className="p-3 text-sm text-red-200 bg-red-900/40 border border-red-500/30 rounded-xl">
           {formError || serverError}
@@ -75,14 +97,28 @@ export function PasswordSection({
       )}
 
       {hasPassword && (
-        <PasswordField
-          label="Current password"
-          value={oldPassword}
-          onChange={(e) => setOldPassword(e.target.value)}
-          disabled={isLoading}
-          placeholder="Current password"
-          autoComplete="current-password"
-        />
+        <div>
+          <PasswordField
+            label="Current password"
+            value={oldPassword}
+            onChange={(e) => setOldPassword(e.target.value)}
+            disabled={isLoading}
+            placeholder="Current password"
+            autoComplete="current-password"
+          />
+          {userEmail && (
+            <div className="mt-1 text-right">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={isForgotLoading}
+                className="text-xs opacity-60 hover:opacity-100 hover:underline underline-offset-4 decoration-purple-400 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+              >
+                {isForgotLoading ? "Sending..." : "Forgot password?"}
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       <PasswordField

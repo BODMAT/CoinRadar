@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppDispatch } from "../../store";
 import { authApi } from "./auth.api";
+import { openPopup } from "../../portals/popup.slice";
+import { ResetPasswordPopup } from "./AuthPopup/ResetPasswordPopup";
 
 type Tone = "success" | "info" | "error";
 interface Notice {
@@ -46,6 +48,32 @@ export function AuthQueryParamToast() {
     const params = new URLSearchParams(window.location.search);
     const authParam = params.get("auth");
     if (!authParam) return;
+
+    if (authParam === "reset_password") {
+      const token = params.get("token") ?? "";
+      params.delete("auth");
+      params.delete("token");
+      const next =
+        window.location.pathname +
+        (params.toString() ? `?${params.toString()}` : "") +
+        window.location.hash;
+      window.history.replaceState({}, "", next);
+
+      if (token) {
+        dispatch(
+          openPopup({
+            title: "Reset Password",
+            children: <ResetPasswordPopup token={token} />,
+          }),
+        );
+      } else {
+        setNotice({
+          tone: "error",
+          text: "Reset link is invalid or expired. Request a new one from the sign-in popup.",
+        });
+      }
+      return;
+    }
 
     const matched = MESSAGES[authParam];
     if (matched) setNotice(matched);
