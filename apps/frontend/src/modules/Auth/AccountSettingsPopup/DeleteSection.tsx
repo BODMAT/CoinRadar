@@ -15,7 +15,6 @@ export function DeleteSection({
 }) {
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   const [deleteAccount, { isLoading: isDeleting, error: deleteError }] =
     useDeleteAccountMutation();
@@ -29,8 +28,9 @@ export function DeleteSection({
     }
     try {
       await deleteAccount(hasPassword ? { password } : {}).unwrap();
-      setSuccessNotice("Account deleted. Closing...");
-      setTimeout(onDeleted, 1200);
+      // Close immediately: the mutation dispatches logout() which clears
+      // currentUser. Delaying would cause a "not signed in" flash.
+      onDeleted();
     } catch (error) {
       console.error("Delete account failed:", error);
     }
@@ -48,18 +48,12 @@ export function DeleteSection({
           {formError || serverError}
         </div>
       )}
-      {successNotice && (
-        <div className="p-3 text-sm text-green-100 bg-green-900/40 border border-green-500/30 rounded-xl">
-          {successNotice}
-        </div>
-      )}
-
       {hasPassword ? (
         <PasswordField
           label="Current password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          disabled={isDeleting || successNotice !== null}
+          disabled={isDeleting}
           placeholder="Current password"
           autoComplete="current-password"
         />
@@ -72,7 +66,7 @@ export function DeleteSection({
 
       <button
         type="button"
-        disabled={isDeleting || successNotice !== null}
+        disabled={isDeleting}
         onClick={handleDelete}
         className={dangerButtonClass}
       >
