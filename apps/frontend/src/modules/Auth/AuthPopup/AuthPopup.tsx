@@ -1,26 +1,21 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
-
-import {
-  useLoginUserMutation,
-  useRegisterUserMutation,
-  useLogoutUserMutation,
-  useLogoutAllSessionsMutation,
-  useResendVerificationMutation,
-} from "./auth.api";
+import { useLoginUserMutation, useRegisterUserMutation } from "../auth.api";
 import {
   LoginSchema,
   RegisterSchema,
   type Login,
   type Register,
-} from "./auth.schema";
-import { PasswordField } from "./PasswordField";
-import { useAppDispatch, useAppSelector } from "../../store";
-import { closePopup } from "../../portals/popup.slice";
+} from "../auth.schema";
+import { PasswordField } from "../PasswordField";
+import { useAppDispatch, useAppSelector } from "../../../store";
+import { closePopup } from "../../../portals/popup.slice";
 import {
   extractServerError,
   inputClass,
   secondaryButtonClass,
-} from "./auth.utils";
+} from "../auth.utils";
+import { SignedInView } from "./SignedInView";
+import { VerifyingStage } from "./VerifyingStage";
 
 type Stage = "signin" | "signup" | "verifying";
 type FormKeys = "login" | "password" | "email";
@@ -38,9 +33,8 @@ export function AuthPopup() {
   const currentUser = useAppSelector((state) => state.auth.user);
 
   const [stage, setStage] = useState<Stage>("signin");
-  const [verifyLogin, setVerifyLogin] = useState<string>("");
-  const [verifyEmail, setVerifyEmail] = useState<string>("");
-  const [resendNotice, setResendNotice] = useState<string | null>(null);
+  const [verifyLogin, setVerifyLogin] = useState("");
+  const [verifyEmail, setVerifyEmail] = useState("");
 
   const [loginData, setLoginData] = useState<Login>({
     login: "",
@@ -51,7 +45,6 @@ export function AuthPopup() {
     password: "",
     email: "",
   });
-
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const [
@@ -66,54 +59,9 @@ export function AuthPopup() {
       isError: isRegisterError,
     },
   ] = useRegisterUserMutation();
-  const [logoutUser, { isLoading: isLogoutLoading }] = useLogoutUserMutation();
-  const [logoutAllSessions, { isLoading: isLogoutAllLoading }] =
-    useLogoutAllSessionsMutation();
-  const [resendVerification, { isLoading: isResendLoading }] =
-    useResendVerificationMutation();
 
   if (currentUser) {
-    return (
-      <div className="fontText w-full max-w-md mx-auto space-y-5">
-        <h2 className="fontTitle text-4xl font-bold text-center drop-shadow-sm">
-          Signed in
-        </h2>
-        <div className="text-center text-sm opacity-80 space-y-1">
-          <p>
-            Logged in as <strong>{currentUser.login}</strong>
-          </p>
-          {currentUser.email && (
-            <p className="text-xs opacity-70">{currentUser.email}</p>
-          )}
-        </div>
-
-        <button
-          type="button"
-          disabled={isLogoutLoading}
-          onClick={() => {
-            logoutUser();
-            dispatch(closePopup());
-          }}
-          className={secondaryButtonClass}
-        >
-          {isLogoutLoading ? "Logging out..." : "Log out"}
-        </button>
-
-        <button
-          type="button"
-          disabled={isLogoutAllLoading}
-          onClick={() => {
-            logoutAllSessions();
-            dispatch(closePopup());
-          }}
-          className={secondaryButtonClass}
-        >
-          {isLogoutAllLoading
-            ? "Logging out everywhere..."
-            : "Log out of all sessions"}
-        </button>
-      </div>
-    );
+    return <SignedInView user={currentUser} />;
   }
 
   const isLoginMode = stage === "signin";
@@ -190,65 +138,13 @@ export function AuthPopup() {
     dispatch(closePopup());
   };
 
-  const handleResend = async () => {
-    setResendNotice(null);
-    try {
-      const response = await resendVerification({
-        login: verifyLogin,
-      }).unwrap();
-      setResendNotice(response.message);
-    } catch {
-      setResendNotice(
-        "Could not resend right now. Please try again in a moment.",
-      );
-    }
-  };
-
   if (stage === "verifying") {
     return (
-      <div className="fontText w-full max-w-md mx-auto space-y-5 text-center">
-        <h2 className="fontTitle text-4xl font-bold drop-shadow-sm">
-          Check your inbox
-        </h2>
-        <p className="text-sm opacity-80">
-          We sent a confirmation link to
-          {verifyEmail ? (
-            <>
-              {" "}
-              <strong>{verifyEmail}</strong>.
-            </>
-          ) : (
-            " your email."
-          )}{" "}
-          Click it to activate your account, then come back to sign in.
-        </p>
-
-        {resendNotice && (
-          <div className="p-3 text-sm text-green-100 bg-green-900/40 border border-green-500/30 rounded-xl">
-            {resendNotice}
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={handleResend}
-          disabled={isResendLoading || !verifyLogin}
-          className={secondaryButtonClass}
-        >
-          {isResendLoading ? "Sending..." : "Resend verification email"}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setStage("signin");
-            setResendNotice(null);
-          }}
-          className={secondaryButtonClass}
-        >
-          Back to sign in
-        </button>
-      </div>
+      <VerifyingStage
+        verifyEmail={verifyEmail}
+        verifyLogin={verifyLogin}
+        onBack={() => setStage("signin")}
+      />
     );
   }
 

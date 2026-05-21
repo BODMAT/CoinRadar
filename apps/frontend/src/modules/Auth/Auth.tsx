@@ -1,6 +1,6 @@
 import { openPopup } from "../../portals/popup.slice";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { AuthPopup } from "./AuthPopup";
+import { AuthPopup } from "./AuthPopup/AuthPopup";
 
 export function Auth() {
   const currentUser = useAppSelector((state) => state.auth.user);

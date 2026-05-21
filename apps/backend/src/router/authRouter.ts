@@ -3,19 +3,25 @@ const authRouter = express.Router();
 
 import {
   registerUser,
-  loginUser,
   verifyEmail,
   resendVerification,
+} from "../controllers/auth/registerHandlers.js";
+import { loginUser } from "../controllers/auth/loginHandler.js";
+import {
   startGoogleAuth,
   googleAuthCallback,
+} from "../controllers/auth/googleHandlers.js";
+import {
   refreshSession,
   logoutUser,
   logoutAllUserSessions,
   getCurrentUser,
+} from "../controllers/auth/sessionHandlers.js";
+import {
   setPassword,
   deleteAccount,
   updateProfile,
-} from "../controllers/authController.js";
+} from "../controllers/auth/profileHandlers.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 authRouter.post("/register", registerUser);

@@ -1,6 +1,6 @@
 import { openPopup } from "../../portals/popup.slice";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { AccountSettingsPopup } from "./AccountSettingsPopup";
+import { AccountSettingsPopup } from "./AccountSettingsPopup/AccountSettingsPopup";
 
 export function Settings() {
   const currentUser = useAppSelector((state) => state.auth.user);
