@@ -33,9 +33,7 @@ export const registerAndCreateWallet = async () => {
     );
   }
 
-  // Register no longer opens a session and login is blocked until the email
-  // is confirmed. Tests can't click the email link, so flip the verified flag
-  // directly and then log in to get cookies.
+  // Flip emailVerified directly; tests can't click the confirmation link.
   await prisma.user.update({
     where: { login },
     data: { emailVerified: true },

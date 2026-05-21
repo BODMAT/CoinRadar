@@ -196,7 +196,6 @@ const createEmailToken = async (
   userId: string,
   purpose: EmailTokenPurpose,
   ttlMs: number,
-  metadata?: Prisma.InputJsonValue,
 ): Promise<{ rawToken: string; expiresAt: Date }> => {
   await prisma.emailToken.deleteMany({
     where: { userId, purpose, consumedAt: null },
@@ -207,13 +206,7 @@ const createEmailToken = async (
   const expiresAt = new Date(Date.now() + ttlMs);
 
   await prisma.emailToken.create({
-    data: {
-      userId,
-      tokenHash,
-      purpose,
-      expiresAt,
-      ...(metadata !== undefined && { metadata }),
-    },
+    data: { userId, tokenHash, purpose, expiresAt },
   });
 
   return { rawToken, expiresAt };
@@ -241,11 +234,7 @@ const consumeEmailToken = async (
     data: { consumedAt: new Date() },
   });
 
-  return {
-    ok: true as const,
-    userId: token.userId,
-    metadata: token.metadata,
-  };
+  return { ok: true as const, userId: token.userId };
 };
 
 const saveRefreshToken = async (
@@ -613,7 +602,7 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
     let user: UserWithWallets | null = existingIdentity?.user ?? null;
 
     if (!user) {
-      // Google must vouch for the email; otherwise we refuse to link or create.
+      // Require Google-verified email to link or create.
       if (!profile.emailVerified) {
         return res.redirect(`${FRONTEND_URL}?auth=google_error`);
       }
@@ -624,9 +613,7 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
       });
 
       if (existingByEmail && existingByEmail.emailVerified) {
-        // Existing account already proved control of this email; attach Google
-        // (upsert handles the rare case of an old google identity on the same
-        // user that pointed to a different sub).
+        // Verified email owner exists; attach Google identity.
         await prisma.authIdentity.upsert({
           where: {
             userId_provider: {
@@ -643,8 +630,7 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
         });
         user = existingByEmail;
       } else {
-        // No verified owner: drop any unverified squat sharing the email and
-        // create a fresh google user.
+        // No verified owner: clear unverified squats, create a fresh Google account.
         await prisma.user.deleteMany({
           where: { emailVerified: false, email: profile.email },
         });
@@ -938,9 +924,7 @@ export const deleteAccount = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "User not found." });
     }
 
-    // Users with a password confirm via that password (sanity check against a
-    // leftover session). Google-only accounts skip it — the active session is
-    // proof enough, and there is no second factor we could ask for here.
+    // Password users confirm via password; Google-only accounts rely on session.
     if (user.password) {
       if (!password) {
         return res

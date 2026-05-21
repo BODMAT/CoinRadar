@@ -247,8 +247,7 @@ describe("Auth security flows", () => {
         "auth=google_success",
       );
 
-      // The squat row must be gone — new google user may pick the same login,
-      // so identity must be checked by id, not by login.
+      // Squat row deleted; check by id, not login.
       const stillSquatById = await prisma.user.findUnique({
         where: { id: squatUser?.id ?? "" },
       });

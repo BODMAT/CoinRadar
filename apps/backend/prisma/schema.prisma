@@ -81,7 +81,6 @@ model EmailToken {
   expiresAt  DateTime
   consumedAt DateTime?
   createdAt  DateTime  @default(now())
-  metadata   Json?
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, purpose])
