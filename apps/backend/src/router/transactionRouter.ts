@@ -8,11 +8,13 @@ import {
   updateTransaction,
   deleteTransaction,
   getPaginatedTransactions,
+} from "../controllers/transaction/transactionCrudHandlers.js";
+import {
   getAllTransactionsGroupByCoinSymbol,
   getTransactionsByCoin,
   getCoinStats,
   getGroupedTransactionsForChart,
-} from "../controllers/transactionController.js";
+} from "../controllers/transaction/transactionStatsHandlers.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 transactionRouter.use(protect);
