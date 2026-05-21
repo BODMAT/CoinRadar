@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppDispatch } from "../../store";
 import { authApi } from "./auth.api";
-import { logout } from "./auth.slice";
-import { clearWalletState } from "../Wallet/selectedWallet.slice";
 
 type Tone = "success" | "info" | "error";
 interface Notice {
@@ -32,34 +30,6 @@ const MESSAGES: Record<string, Notice> = {
     tone: "error",
     text: "Google sign-in failed. Try again or use email and password.",
   },
-  google_pending_merge: {
-    tone: "info",
-    text: "Check your inbox to confirm linking Google to your account.",
-  },
-  merge_confirmed: {
-    tone: "success",
-    text: "Google is now linked. You are signed in.",
-  },
-  merge_already_done: {
-    tone: "info",
-    text: "This Google link has already been confirmed. Try signing in.",
-  },
-  merge_error: {
-    tone: "error",
-    text: "Could not confirm Google linking. The link may be invalid or expired.",
-  },
-  account_deleted: {
-    tone: "success",
-    text: "Account deleted. We won't miss the data, only you.",
-  },
-  already_deleted: {
-    tone: "info",
-    text: "This deletion link has already been used.",
-  },
-  delete_error: {
-    tone: "error",
-    text: "Could not confirm account deletion. The link may be invalid or expired.",
-  },
 };
 
 const toneClass: Record<Tone, string> = {
@@ -80,13 +50,7 @@ export function AuthQueryParamToast() {
     const matched = MESSAGES[authParam];
     if (matched) setNotice(matched);
 
-    if (authParam === "account_deleted") {
-      dispatch(logout());
-      dispatch(clearWalletState());
-      dispatch(authApi.util.resetApiState());
-    }
-
-    if (authParam === "merge_confirmed" || authParam === "google_success") {
+    if (authParam === "google_success") {
       dispatch(authApi.util.invalidateTags(["User"]));
     }
 

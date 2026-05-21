@@ -13,6 +13,7 @@ import {
   type Login,
   type Register,
 } from "./auth.schema";
+import { PasswordField } from "./PasswordField";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closePopup } from "../../portals/popup.slice";
 
@@ -52,7 +53,6 @@ export function AuthPopup() {
   const currentUser = useAppSelector((state) => state.auth.user);
 
   const [stage, setStage] = useState<Stage>("signin");
-  const [showPassword, setShowPassword] = useState(false);
   const [verifyLogin, setVerifyLogin] = useState<string>("");
   const [verifyEmail, setVerifyEmail] = useState<string>("");
   const [resendNotice, setResendNotice] = useState<string | null>(null);
@@ -322,61 +322,16 @@ export function AuthPopup() {
           </div>
         )}
 
-        <div className="relative group">
-          <label className="block text-sm font-semibold opacity-70 mb-2">
-            Password
-          </label>
-          <input
-            type={showPassword ? "text" : "password"}
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            disabled={isLoading}
-            className={inputClass}
-            placeholder="Enter your password"
-          />
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={() => setShowPassword((prev) => !prev)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            title={showPassword ? "Hide password" : "Show password"}
-            className="absolute right-3 top-[2.35rem] p-1 rounded-md opacity-75 hover:opacity-100 hover:bg-white/10 cursor-pointer disabled:cursor-not-allowed transition-colors"
-          >
-            {showPassword ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="w-5 h-5"
-              >
-                <path d="M3 3l18 18" />
-                <path d="M10.58 10.58a2 2 0 102.83 2.83" />
-                <path d="M9.88 5.09A10.94 10.94 0 0112 5c5 0 9.27 3.11 11 7-1 2.24-2.76 4.14-5 5.31" />
-                <path d="M6.61 6.61C4.62 7.85 3.06 9.74 2 12c1.73 3.89 6 7 10 7 1.61 0 3.17-.36 4.61-1.01" />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="w-5 h-5"
-              >
-                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            )}
-          </button>
-          {formErrors.password && (
-            <p className="mt-1 text-xs text-red-400 font-semibold ml-1">
-              {formErrors.password}
-            </p>
-          )}
-        </div>
+        <PasswordField
+          label="Password"
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          disabled={isLoading}
+          placeholder="Enter your password"
+          autoComplete={isLoginMode ? "current-password" : "new-password"}
+          error={formErrors.password}
+        />
 
         <div className="pt-4">
           <button

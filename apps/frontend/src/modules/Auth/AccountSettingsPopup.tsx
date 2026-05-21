@@ -1,16 +1,15 @@
 import { useState, useRef, type FormEvent, type ChangeEvent } from "react";
 import {
   useSetPasswordMutation,
-  useSendOneTimePasswordMutation,
   useDeleteAccountMutation,
-  useRequestDeleteAccountMutation,
   useUpdateProfileMutation,
 } from "./auth.api";
 import type { UserSafe } from "./auth.schema";
+import { PasswordField } from "./PasswordField";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closePopup } from "../../portals/popup.slice";
 
-type Section = "profile" | "password" | "otp" | "delete";
+type Section = "profile" | "password" | "delete";
 
 const MAX_PHOTO_BYTES = 600 * 1024;
 
@@ -89,13 +88,6 @@ export function AccountSettingsPopup() {
         </button>
         <button
           type="button"
-          className={tabButtonClass(section === "otp")}
-          onClick={() => setSection("otp")}
-        >
-          One-time password
-        </button>
-        <button
-          type="button"
           className={tabButtonClass(section === "delete")}
           onClick={() => setSection("delete")}
         >
@@ -110,7 +102,6 @@ export function AccountSettingsPopup() {
           onDone={() => dispatch(closePopup())}
         />
       )}
-      {section === "otp" && <OtpSection />}
       {section === "delete" && (
         <DeleteSection
           hasPassword={hasPassword}
@@ -349,51 +340,33 @@ function PasswordSection({
       )}
 
       {hasPassword && (
-        <div>
-          <label className="block text-sm font-semibold opacity-70 mb-2">
-            Current password
-          </label>
-          <input
-            type="password"
-            value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
-            disabled={isLoading}
-            className={inputClass}
-            placeholder="Current password"
-            autoComplete="current-password"
-          />
-        </div>
+        <PasswordField
+          label="Current password"
+          value={oldPassword}
+          onChange={(e) => setOldPassword(e.target.value)}
+          disabled={isLoading}
+          placeholder="Current password"
+          autoComplete="current-password"
+        />
       )}
 
-      <div>
-        <label className="block text-sm font-semibold opacity-70 mb-2">
-          New password
-        </label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={isLoading}
-          className={inputClass}
-          placeholder="At least 6 characters"
-          autoComplete="new-password"
-        />
-      </div>
+      <PasswordField
+        label="New password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        disabled={isLoading}
+        placeholder="At least 6 characters"
+        autoComplete="new-password"
+      />
 
-      <div>
-        <label className="block text-sm font-semibold opacity-70 mb-2">
-          Confirm new password
-        </label>
-        <input
-          type="password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          disabled={isLoading}
-          className={inputClass}
-          placeholder="Repeat new password"
-          autoComplete="new-password"
-        />
-      </div>
+      <PasswordField
+        label="Confirm new password"
+        value={confirm}
+        onChange={(e) => setConfirm(e.target.value)}
+        disabled={isLoading}
+        placeholder="Repeat new password"
+        autoComplete="new-password"
+      />
 
       <button
         type="submit"
@@ -411,55 +384,6 @@ function PasswordSection({
   );
 }
 
-function OtpSection() {
-  const [sendOtp, { isLoading, error, isError }] =
-    useSendOneTimePasswordMutation();
-  const [message, setMessage] = useState<string | null>(null);
-
-  const serverError = isError ? extractServerError(error) : null;
-
-  const handleSend = async () => {
-    setMessage(null);
-    try {
-      const response = await sendOtp().unwrap();
-      setMessage(response.message);
-    } catch (error) {
-      console.error("Send OTP failed:", error);
-    }
-  };
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm opacity-80">
-        Sends a one-time password to your email and replaces your current
-        password with it. Useful if you signed up with Google and want to log in
-        manually, or if you forgot your password while signed in here.
-      </p>
-
-      {message && (
-        <div className="p-3 text-sm text-green-100 bg-green-900/40 border border-green-500/30 rounded-xl">
-          {message}
-        </div>
-      )}
-      {serverError && (
-        <div className="p-3 text-sm text-red-200 bg-red-900/40 border border-red-500/30 rounded-xl">
-          {serverError}
-        </div>
-      )}
-
-      <button
-        type="button"
-        disabled={isLoading}
-        onClick={handleSend}
-        className={primaryButtonClass}
-        style={{ background: "var(--color-fixed)" }}
-      >
-        {isLoading ? "Sending..." : "Send one-time password to my email"}
-      </button>
-    </div>
-  );
-}
-
 function DeleteSection({
   hasPassword,
   onDeleted,
@@ -469,15 +393,11 @@ function DeleteSection({
 }) {
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [emailNotice, setEmailNotice] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   const [deleteAccount, { isLoading: isDeleting, error: deleteError }] =
     useDeleteAccountMutation();
-  const [requestDelete, { isLoading: isRequesting, error: requestError }] =
-    useRequestDeleteAccountMutation();
-
-  const serverError =
-    extractServerError(deleteError) || extractServerError(requestError);
+  const serverError = extractServerError(deleteError);
 
   const handleDelete = async () => {
     setFormError(null);
@@ -487,19 +407,10 @@ function DeleteSection({
     }
     try {
       await deleteAccount(hasPassword ? { password } : {}).unwrap();
-      onDeleted();
+      setSuccessNotice("Account deleted. Closing...");
+      setTimeout(onDeleted, 1200);
     } catch (error) {
       console.error("Delete account failed:", error);
-    }
-  };
-
-  const handleRequestEmail = async () => {
-    setEmailNotice(null);
-    try {
-      const response = await requestDelete().unwrap();
-      setEmailNotice(response.message);
-    } catch (error) {
-      console.error("Request delete email failed:", error);
     }
   };
 
@@ -515,57 +426,36 @@ function DeleteSection({
           {formError || serverError}
         </div>
       )}
-
-      {emailNotice && (
+      {successNotice && (
         <div className="p-3 text-sm text-green-100 bg-green-900/40 border border-green-500/30 rounded-xl">
-          {emailNotice}
+          {successNotice}
         </div>
       )}
 
       {hasPassword ? (
-        <>
-          <div>
-            <label className="block text-sm font-semibold opacity-70 mb-2">
-              Current password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isDeleting}
-              className={inputClass}
-              placeholder="Current password"
-              autoComplete="current-password"
-            />
-          </div>
-          <button
-            type="button"
-            disabled={isDeleting}
-            onClick={handleDelete}
-            className={dangerButtonClass}
-          >
-            {isDeleting ? "Deleting..." : "Delete my account"}
-          </button>
-        </>
+        <PasswordField
+          label="Current password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={isDeleting || successNotice !== null}
+          placeholder="Current password"
+          autoComplete="current-password"
+        />
       ) : (
-        <>
-          <p className="text-sm opacity-80">
-            Your account has no password (Google sign-in only). We will email
-            you a confirmation link - click it to delete. The link expires in 1
-            hour.
-          </p>
-          <button
-            type="button"
-            disabled={isRequesting}
-            onClick={handleRequestEmail}
-            className={secondaryButtonClass}
-          >
-            {isRequesting
-              ? "Sending..."
-              : "Email me a deletion confirmation link"}
-          </button>
-        </>
+        <p className="text-sm opacity-80">
+          Your account is signed in via Google. Click delete to remove it
+          immediately.
+        </p>
       )}
+
+      <button
+        type="button"
+        disabled={isDeleting || successNotice !== null}
+        onClick={handleDelete}
+        className={dangerButtonClass}
+      >
+        {isDeleting ? "Deleting..." : "Delete my account"}
+      </button>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import jwt from "jsonwebtoken";
 import prisma from "../../src/prisma.js";
 import { getApp, resetDatabase } from "../helpers/testUtils.js";
 import { __getCapturedEmails } from "../../src/services/emailService.js";
@@ -12,7 +13,8 @@ type MockGoogleProfile = {
   picture?: string;
 };
 
-const rand = (prefix: string) => `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+const rand = (prefix: string) =>
+  `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 const loginOf = (prefix: string) => rand(prefix).slice(0, 30);
 
 const mockGoogleFetch = (profile: MockGoogleProfile) => {
@@ -41,16 +43,15 @@ const mockGoogleFetch = (profile: MockGoogleProfile) => {
           json: async () => ({ id_token: "id-token-test" }),
         } as Response;
       }
-      return {
-        ok: false,
-        json: async () => ({}),
-      } as Response;
+      return { ok: false, json: async () => ({}) } as Response;
     });
 
   return () => fetchMock.mockRestore();
 };
 
-const startGoogleAndGetState = async (agent: ReturnType<typeof request.agent>) => {
+const startGoogleAndGetState = async (
+  agent: ReturnType<typeof request.agent>,
+) => {
   const startResponse = await agent.get("/api/auth/google/start");
   expect(startResponse.status).toBe(302);
   const location = String(startResponse.headers.location || "");
@@ -59,13 +60,8 @@ const startGoogleAndGetState = async (agent: ReturnType<typeof request.agent>) =
   return state as string;
 };
 
-const registerUser = async (login: string, password: string, email: string) => {
-  return request(getApp()).post("/api/auth/register").send({
-    login,
-    password,
-    email,
-  });
-};
+const registerUser = async (login: string, password: string, email: string) =>
+  request(getApp()).post("/api/auth/register").send({ login, password, email });
 
 const verifyUserDirectly = async (login: string) => {
   await prisma.user.update({
@@ -74,32 +70,34 @@ const verifyUserDirectly = async (login: string) => {
   });
 };
 
-const loginUser = async (login: string, password: string) => {
-  return request(getApp()).post("/api/auth/login").send({ login, password });
+const loginUser = async (login: string, password: string) =>
+  request(getApp()).post("/api/auth/login").send({ login, password });
+
+const cookiesFrom = (response: request.Response): string[] => {
+  const raw = response.headers["set-cookie"];
+  return Array.isArray(raw) ? raw : raw ? [raw] : [];
+};
+
+const accessCookieFromArray = (cookies: string[]): string | null => {
+  for (const c of cookies) {
+    if (c.startsWith("access_token=")) {
+      return c.split(";")[0].slice("access_token=".length);
+    }
+  }
+  return null;
 };
 
 describe("Auth security flows", () => {
   beforeEach(async () => {
-    process.env.GOOGLE_CLIENT_ID =
-      process.env.GOOGLE_CLIENT_ID || "test-google-client-id";
-    process.env.GOOGLE_CLIENT_SECRET =
-      process.env.GOOGLE_CLIENT_SECRET || "test-google-client-secret";
-    process.env.GOOGLE_REDIRECT_URI =
-      process.env.GOOGLE_REDIRECT_URI ||
-      "http://localhost:4000/api/auth/google/callback";
-    process.env.API_PUBLIC_URL =
-      process.env.API_PUBLIC_URL || "http://localhost:4000";
-
     await resetDatabase();
   });
 
-  it("prevents takeover: second register can replace unverified squat on same login/email", async () => {
+  it("prevents takeover: second register replaces unverified squat on same login/email", async () => {
     const login = loginOf("squat");
     const email = `${login}@mail.com`;
 
     const first = await registerUser(login, "password123", email);
     expect(first.status).toBe(201);
-
     const firstUser = await prisma.user.findUnique({ where: { login } });
     expect(firstUser).toBeTruthy();
 
@@ -111,50 +109,22 @@ describe("Auth security flows", () => {
     expect(users[0]?.id).not.toBe(firstUser?.id);
   });
 
-  it("requires merge-confirmation email when google sign-in hits an existing email account", async () => {
-    const login = loginOf("merge");
+  it("blocks duplicate register against a verified account", async () => {
+    const login = loginOf("verifiedconflict");
     const email = `${login}@mail.com`;
-    const password = "password123";
 
-    const registerResponse = await registerUser(login, password, email);
-    expect(registerResponse.status).toBe(201);
+    expect((await registerUser(login, "password123", email)).status).toBe(201);
     await verifyUserDirectly(login);
 
-    const restoreFetch = mockGoogleFetch({
-      sub: rand("gsub"),
-      email,
-      email_verified: "true",
-      name: login,
-    });
-
-    try {
-      const agent = request.agent(getApp());
-      const state = await startGoogleAndGetState(agent);
-      const callback = await agent
-        .get("/api/auth/google/callback")
-        .query({ code: "test-code", state });
-
-      expect(callback.status).toBe(302);
-      expect(String(callback.headers.location)).toContain(
-        "auth=google_pending_merge",
-      );
-
-      const sent = __getCapturedEmails().filter(
-        (m) => m.purpose === "merge_google" && m.to === email,
-      );
-      expect(sent.length).toBeGreaterThan(0);
-      expect(sent.at(-1)?.token).toBeTruthy();
-    } finally {
-      restoreFetch();
-    }
+    const second = await registerUser(login, "password456", email);
+    expect(second.status).toBe(409);
   });
 
   it("email verification link supports success, consumed, and expired cases", async () => {
     const login = loginOf("verify");
     const email = `${login}@mail.com`;
 
-    const registerResponse = await registerUser(login, "password123", email);
-    expect(registerResponse.status).toBe(201);
+    expect((await registerUser(login, "password123", email)).status).toBe(201);
 
     const verifyMail = __getCapturedEmails()
       .filter((m) => m.purpose === "verify_email" && m.to === email)
@@ -177,13 +147,9 @@ describe("Auth security flows", () => {
 
     const secondLogin = loginOf("verifyexp");
     const secondEmail = `${secondLogin}@mail.com`;
-    const secondRegister = await registerUser(
-      secondLogin,
-      "password123",
-      secondEmail,
-    );
-    expect(secondRegister.status).toBe(201);
-
+    expect(
+      (await registerUser(secondLogin, "password123", secondEmail)).status,
+    ).toBe(201);
     const secondMail = __getCapturedEmails()
       .filter((m) => m.purpose === "verify_email" && m.to === secondEmail)
       .at(-1);
@@ -201,70 +167,41 @@ describe("Auth security flows", () => {
     expect(String(expired.headers.location)).toContain("auth=verify_error");
   });
 
-  it("supports account linking both ways: merge-confirm and authenticated auto-link", async () => {
-    const login = loginOf("link");
+  it("login is blocked until the email is verified", async () => {
+    const login = loginOf("loginblock");
     const email = `${login}@mail.com`;
     const password = "password123";
 
-    const registerResponse = await registerUser(login, password, email);
-    expect(registerResponse.status).toBe(201);
+    expect((await registerUser(login, password, email)).status).toBe(201);
+
+    const before = await loginUser(login, password);
+    expect(before.status).toBe(403);
+    expect(before.body?.requiresVerification).toBe(true);
+
     await verifyUserDirectly(login);
 
-    const restoreFetchA = mockGoogleFetch({
-      sub: rand("gsubpend"),
+    const after = await loginUser(login, password);
+    expect(after.status).toBe(200);
+  });
+
+  it("auto-links google to a verified existing account on first sign-in", async () => {
+    const login = loginOf("autolink");
+    const email = `${login}@mail.com`;
+    const password = "password123";
+
+    expect((await registerUser(login, password, email)).status).toBe(201);
+    await verifyUserDirectly(login);
+
+    const restoreFetch = mockGoogleFetch({
+      sub: rand("gsubauto"),
       email,
       email_verified: "true",
     });
     try {
-      const pendingAgent = request.agent(getApp());
-      const pendingState = await startGoogleAndGetState(pendingAgent);
-      const pending = await pendingAgent
+      const agent = request.agent(getApp());
+      const state = await startGoogleAndGetState(agent);
+      const callback = await agent
         .get("/api/auth/google/callback")
-        .query({ code: "test-code", state: pendingState });
-      expect(String(pending.headers.location)).toContain(
-        "google_pending_merge",
-      );
-
-      const mergeToken = __getCapturedEmails()
-        .filter((m) => m.purpose === "merge_google" && m.to === email)
-        .at(-1)?.token;
-      expect(mergeToken).toBeTruthy();
-
-      const verifyMerge = await pendingAgent
-        .get("/api/auth/verify-merge")
-        .query({ token: mergeToken });
-      expect(verifyMerge.status).toBe(302);
-      expect(String(verifyMerge.headers.location)).toContain("merge_confirmed");
-    } finally {
-      restoreFetchA();
-    }
-
-    const localOnlyLogin = loginOf("linklocal");
-    const localOnlyEmail = `${localOnlyLogin}@mail.com`;
-    const reg2 = await registerUser(localOnlyLogin, password, localOnlyEmail);
-    expect(reg2.status).toBe(201);
-    await verifyUserDirectly(localOnlyLogin);
-
-    const loginResponse = await loginUser(localOnlyLogin, password);
-    expect(loginResponse.status).toBe(200);
-    const cookieRaw = loginResponse.headers["set-cookie"];
-    const loginCookies = Array.isArray(cookieRaw)
-      ? cookieRaw
-      : cookieRaw
-        ? [cookieRaw]
-        : [];
-
-    const restoreFetchB = mockGoogleFetch({
-      sub: rand("gsubauto"),
-      email: localOnlyEmail,
-      email_verified: "true",
-    });
-    try {
-      const autoAgent = request.agent(getApp());
-      const state = await startGoogleAndGetState(autoAgent);
-      const callback = await autoAgent
-        .get("/api/auth/google/callback")
-        .set("Cookie", loginCookies.join("; "))
         .query({ code: "test-code", state });
 
       expect(callback.status).toBe(302);
@@ -273,15 +210,81 @@ describe("Auth security flows", () => {
       );
 
       const linked = await prisma.authIdentity.findFirst({
-        where: { user: { login: localOnlyLogin }, provider: "google" },
+        where: { user: { login }, provider: "google" },
       });
       expect(linked).toBeTruthy();
     } finally {
-      restoreFetchB();
+      restoreFetch();
     }
   });
 
-  it("supports set-password and one-time-password flows", async () => {
+  it("google sign-in replaces an unverified squat sharing the email", async () => {
+    const squatLogin = loginOf("squatg");
+    const email = `${squatLogin}@mail.com`;
+
+    expect((await registerUser(squatLogin, "password123", email)).status).toBe(
+      201,
+    );
+    const squatUser = await prisma.user.findUnique({
+      where: { login: squatLogin },
+    });
+    expect(squatUser?.emailVerified).toBe(false);
+
+    const restoreFetch = mockGoogleFetch({
+      sub: rand("gsubreplace"),
+      email,
+      email_verified: "true",
+    });
+    try {
+      const agent = request.agent(getApp());
+      const state = await startGoogleAndGetState(agent);
+      const callback = await agent
+        .get("/api/auth/google/callback")
+        .query({ code: "test-code", state });
+
+      expect(callback.status).toBe(302);
+      expect(String(callback.headers.location)).toContain(
+        "auth=google_success",
+      );
+
+      // The squat row must be gone — new google user may pick the same login,
+      // so identity must be checked by id, not by login.
+      const stillSquatById = await prisma.user.findUnique({
+        where: { id: squatUser?.id ?? "" },
+      });
+      expect(stillSquatById).toBeNull();
+
+      const googleUser = await prisma.user.findFirst({ where: { email } });
+      expect(googleUser).toBeTruthy();
+      expect(googleUser?.id).not.toBe(squatUser?.id);
+      expect(googleUser?.emailVerified).toBe(true);
+      expect(googleUser?.password).toBeNull();
+    } finally {
+      restoreFetch();
+    }
+  });
+
+  it("google sign-in refuses if google itself did not verify the email", async () => {
+    const restoreFetch = mockGoogleFetch({
+      sub: rand("gsubnv"),
+      email: `${loginOf("gnv")}@mail.com`,
+      email_verified: "false",
+    });
+    try {
+      const agent = request.agent(getApp());
+      const state = await startGoogleAndGetState(agent);
+      const callback = await agent
+        .get("/api/auth/google/callback")
+        .query({ code: "test-code", state });
+
+      expect(callback.status).toBe(302);
+      expect(String(callback.headers.location)).toContain("auth=google_error");
+    } finally {
+      restoreFetch();
+    }
+  });
+
+  it("set-password: first set creates local identity; change requires correct old password", async () => {
     const restoreFetch = mockGoogleFetch({
       sub: rand("gsubpwd"),
       email: `${loginOf("guser")}@mail.com`,
@@ -291,115 +294,146 @@ describe("Auth security flows", () => {
     try {
       const agent = request.agent(getApp());
       const state = await startGoogleAndGetState(agent);
-      const callback = await agent
+      await agent
         .get("/api/auth/google/callback")
         .query({ code: "test-code", state });
-      expect(callback.status).toBe(302);
-      expect(String(callback.headers.location)).toContain(
-        "auth=google_success",
-      );
 
-      const setPasswordResponse = await agent
+      const first = await agent
         .post("/api/auth/set-password")
         .send({ password: "new-password-123" });
-      expect(setPasswordResponse.status).toBe(200);
+      expect(first.status).toBe(200);
 
       const me = await agent.get("/api/auth/me");
-      expect(me.status).toBe(200);
       expect(me.body?.user?.hasPassword).toBe(true);
 
-      const otpResponse = await agent.post("/api/auth/send-one-time-password");
-      expect(otpResponse.status).toBe(200);
+      const wrongOld = await agent
+        .post("/api/auth/set-password")
+        .send({ oldPassword: "wrong-one", password: "rotated-789" });
+      expect(wrongOld.status).toBe(401);
 
-      const meAfterOtp = await agent.get("/api/auth/me");
-      expect(meAfterOtp.status).toBe(200);
-      const userLogin = meAfterOtp.body?.user?.login;
-      const userEmail = meAfterOtp.body?.user?.email;
-      expect(userLogin).toBeTruthy();
-      expect(userEmail).toBeTruthy();
+      const correctOld = await agent
+        .post("/api/auth/set-password")
+        .send({ oldPassword: "new-password-123", password: "rotated-789" });
+      expect(correctOld.status).toBe(200);
 
-      const otpMail = __getCapturedEmails()
-        .filter((m) => m.purpose === "one_time_password" && m.to === userEmail)
-        .at(-1);
-      expect(otpMail?.otp).toBeTruthy();
-
-      const loginWithOtp = await request(getApp())
-        .post("/api/auth/login")
-        .send({ login: userLogin, password: otpMail?.otp });
-      expect(loginWithOtp.status).toBe(200);
+      const userLogin = (await agent.get("/api/auth/me")).body?.user?.login;
+      const reLogin = await loginUser(userLogin, "rotated-789");
+      expect(reLogin.status).toBe(200);
     } finally {
       restoreFetch();
     }
   });
 
-  it("supports account deletion for local-password and google-only email-link cases", async () => {
-    const localLogin = loginOf("deletelocal");
-    const localEmail = `${localLogin}@mail.com`;
-    const localPassword = "password123";
+  it("updateProfile: rename re-signs access JWT and 409s on a taken login", async () => {
+    const loginA = loginOf("renameA");
+    const loginB = loginOf("renameB");
+    const password = "password123";
 
-    const localRegister = await registerUser(
-      localLogin,
-      localPassword,
-      localEmail,
-    );
-    expect(localRegister.status).toBe(201);
-    await verifyUserDirectly(localLogin);
+    expect(
+      (await registerUser(loginA, password, `${loginA}@mail.com`)).status,
+    ).toBe(201);
+    await verifyUserDirectly(loginA);
+    expect(
+      (await registerUser(loginB, password, `${loginB}@mail.com`)).status,
+    ).toBe(201);
+    await verifyUserDirectly(loginB);
 
-    const localAgent = request.agent(getApp());
-    const localSignIn = await localAgent
-      .post("/api/auth/login")
-      .send({ login: localLogin, password: localPassword });
-    expect(localSignIn.status).toBe(200);
+    const agent = request.agent(getApp());
+    expect(
+      (await agent.post("/api/auth/login").send({ login: loginA, password }))
+        .status,
+    ).toBe(200);
 
-    const localDelete = await localAgent
+    const newName = loginOf("renamed");
+    const ok = await agent.patch("/api/auth/me").send({ login: newName });
+    expect(ok.status).toBe(200);
+    expect(ok.body?.user?.login).toBe(newName);
+
+    const tokenCookie = accessCookieFromArray(cookiesFrom(ok));
+    expect(tokenCookie).toBeTruthy();
+    const decoded = jwt.verify(
+      tokenCookie as string,
+      process.env.JWT_SECRET as string,
+    ) as { userLogin?: string };
+    expect(decoded.userLogin).toBe(newName);
+
+    const conflict = await agent.patch("/api/auth/me").send({ login: loginB });
+    expect(conflict.status).toBe(409);
+  });
+
+  it("updateProfile: rejects unsafe photoUrl and stores a base64 data URL", async () => {
+    const login = loginOf("photo");
+    const password = "password123";
+    expect(
+      (await registerUser(login, password, `${login}@mail.com`)).status,
+    ).toBe(201);
+    await verifyUserDirectly(login);
+
+    const agent = request.agent(getApp());
+    expect(
+      (await agent.post("/api/auth/login").send({ login, password })).status,
+    ).toBe(200);
+
+    const unsafe = await agent
+      .patch("/api/auth/me")
+      .send({ photoUrl: "javascript:alert(1)" });
+    expect(unsafe.status).toBe(400);
+
+    const dataUrl =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAAEUlEQVR42mP8/5+hngEKGAEALAIB/X1KGQAAAABJRU5ErkJggg==";
+    const ok = await agent.patch("/api/auth/me").send({ photoUrl: dataUrl });
+    expect(ok.status).toBe(200);
+    expect(ok.body?.user?.photoUrl).toBe(dataUrl);
+  });
+
+  it("deletes a local account when the correct password is provided", async () => {
+    const login = loginOf("delete");
+    const password = "password123";
+    expect(
+      (await registerUser(login, password, `${login}@mail.com`)).status,
+    ).toBe(201);
+    await verifyUserDirectly(login);
+
+    const agent = request.agent(getApp());
+    expect(
+      (await agent.post("/api/auth/login").send({ login, password })).status,
+    ).toBe(200);
+
+    const wrong = await agent
       .delete("/api/auth/account")
-      .send({ password: localPassword });
-    expect(localDelete.status).toBe(200);
+      .send({ password: "nope" });
+    expect(wrong.status).toBe(401);
 
-    const localStillThere = await prisma.user.findUnique({
-      where: { login: localLogin },
-    });
-    expect(localStillThere).toBeNull();
+    const ok = await agent.delete("/api/auth/account").send({ password });
+    expect(ok.status).toBe(200);
 
+    expect(await prisma.user.findUnique({ where: { login } })).toBeNull();
+  });
+
+  it("deletes a google-only account immediately, no password required", async () => {
     const restoreFetch = mockGoogleFetch({
       sub: rand("gsubdel"),
       email: `${loginOf("gdel")}@mail.com`,
       email_verified: "true",
     });
     try {
-      const googleAgent = request.agent(getApp());
-      const state = await startGoogleAndGetState(googleAgent);
-      const callback = await googleAgent
+      const agent = request.agent(getApp());
+      const state = await startGoogleAndGetState(agent);
+      await agent
         .get("/api/auth/google/callback")
         .query({ code: "test-code", state });
-      expect(callback.status).toBe(302);
 
-      const requestDelete = await googleAgent.post(
-        "/api/auth/account/request-delete",
-      );
-      expect(requestDelete.status).toBe(200);
-
-      const me = await googleAgent.get("/api/auth/me");
+      const me = await agent.get("/api/auth/me");
       const googleLogin = me.body?.user?.login as string;
       expect(googleLogin).toBeTruthy();
+      expect(me.body?.user?.hasPassword).toBe(false);
 
-      const deleteToken = __getCapturedEmails()
-        .filter((m) => m.purpose === "delete_account")
-        .at(-1)?.token;
-      expect(deleteToken).toBeTruthy();
+      const ok = await agent.delete("/api/auth/account").send({});
+      expect(ok.status).toBe(200);
 
-      const confirm = await request(getApp())
-        .get("/api/auth/account/confirm-delete")
-        .query({ token: deleteToken });
-      expect(confirm.status).toBe(302);
-      expect(String(confirm.headers.location)).toContain(
-        "auth=account_deleted",
-      );
-
-      const googleStillThere = await prisma.user.findUnique({
-        where: { login: googleLogin },
-      });
-      expect(googleStillThere).toBeNull();
+      expect(
+        await prisma.user.findUnique({ where: { login: googleLogin } }),
+      ).toBeNull();
     } finally {
       restoreFetch();
     }
@@ -407,24 +441,15 @@ describe("Auth security flows", () => {
 
   it("revokes all refresh sessions on logout-all", async () => {
     const login = loginOf("logoutall");
-    const email = `${login}@mail.com`;
     const password = "password123";
-
-    const registerResponse = await registerUser(login, password, email);
-    expect(registerResponse.status).toBe(201);
+    expect(
+      (await registerUser(login, password, `${login}@mail.com`)).status,
+    ).toBe(201);
     await verifyUserDirectly(login);
 
-    const loginResponse = await request(getApp())
-      .post("/api/auth/login")
-      .send({ login, password });
+    const loginResponse = await loginUser(login, password);
     expect(loginResponse.status).toBe(200);
-
-    const cookieRaw = loginResponse.headers["set-cookie"];
-    const cookies = Array.isArray(cookieRaw)
-      ? cookieRaw
-      : cookieRaw
-        ? [cookieRaw]
-        : [];
+    const cookies = cookiesFrom(loginResponse);
     expect(cookies.join(";")).toContain("refresh_token=");
 
     const logoutAll = await request(getApp())

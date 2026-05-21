@@ -15,17 +15,9 @@ import {
   UserSchema,
 } from "../models/AuthSchema.js";
 import { handleZodError } from "../utils/helpers.js";
-import {
-  sendVerificationEmail,
-  sendGoogleMergeConfirmationEmail,
-  sendOneTimePasswordEmail,
-  sendAccountDeletionEmail,
-} from "../services/emailService.js";
+import { sendVerificationEmail } from "../services/emailService.js";
 
 const EMAIL_VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
-const MERGE_TOKEN_TTL_MS = 60 * 60 * 1000;
-const DELETE_TOKEN_TTL_MS = 60 * 60 * 1000;
-const OTP_BYTES = 12;
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET;
@@ -92,19 +84,6 @@ const parseCookieHeader = (cookieHeader?: string): Record<string, string> => {
       }
       return acc;
     }, {});
-};
-
-const getUserIdFromAccessCookie = (req: Request): string | null => {
-  const cookies = parseCookieHeader(req.headers.cookie);
-  const accessToken = cookies[ACCESS_COOKIE_NAME];
-  if (!accessToken || !JWT_SECRET) return null;
-
-  try {
-    const decoded = jwt.verify(accessToken, JWT_SECRET) as { userId?: string };
-    return decoded.userId ?? null;
-  } catch {
-    return null;
-  }
 };
 
 const hashToken = (token: string): string => {
@@ -211,7 +190,7 @@ const toSafeUserResponse = (user: UserWithWallets) => {
   });
 };
 
-type EmailTokenPurpose = "verify_email" | "merge_google" | "delete_account";
+type EmailTokenPurpose = "verify_email";
 
 const createEmailToken = async (
   userId: string,
@@ -447,7 +426,8 @@ export const registerUser = async (req: Request, res: Response) => {
   } catch (error: any) {
     if (error.code === "P2002") {
       return res.status(409).json({
-        error: "Login or email is already taken. Please choose a different.",
+        error:
+          "Account with this login or email already exists. Try signing in or pick different credentials.",
       });
     }
 
@@ -528,65 +508,6 @@ export const verifyEmail = async (req: Request, res: Response) => {
   });
 
   return res.redirect(`${FRONTEND_URL}?auth=verified`);
-};
-
-export const verifyGoogleMerge = async (req: Request, res: Response) => {
-  try {
-    const token = typeof req.query.token === "string" ? req.query.token : "";
-    if (!token) {
-      return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
-    }
-
-    const result = await consumeEmailToken(token, "merge_google");
-    if (!result.ok) {
-      const param =
-        result.reason === "already_used" ? "merge_already_done" : "merge_error";
-      return res.redirect(`${FRONTEND_URL}?auth=${param}`);
-    }
-
-    const metadata = result.metadata as { sub?: string; email?: string } | null;
-    if (!metadata?.sub) {
-      return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
-    }
-
-    const conflicting = await prisma.authIdentity.findUnique({
-      where: {
-        provider_providerId: { provider: "google", providerId: metadata.sub },
-      },
-    });
-    if (conflicting && conflicting.userId !== result.userId) {
-      return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
-    }
-
-    if (!conflicting) {
-      await prisma.authIdentity.create({
-        data: {
-          userId: result.userId,
-          provider: "google",
-          providerId: metadata.sub,
-        },
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: result.userId },
-      include: {
-        wallets: {
-          select: { id: true, name: true },
-          orderBy: { createdAt: "asc" },
-        },
-      },
-    });
-    if (!user) {
-      return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
-    }
-
-    await createSession(user, req, res);
-    return res.redirect(`${FRONTEND_URL}?auth=merge_confirmed`);
-  } catch (error) {
-    console.error("Google merge confirmation error:", error);
-    return res.redirect(`${FRONTEND_URL}?auth=merge_error`);
-  }
 };
 
 export const resendVerification = async (req: Request, res: Response) => {
@@ -692,64 +613,42 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
     let user: UserWithWallets | null = existingIdentity?.user ?? null;
 
     if (!user) {
+      // Google must vouch for the email; otherwise we refuse to link or create.
+      if (!profile.emailVerified) {
+        return res.redirect(`${FRONTEND_URL}?auth=google_error`);
+      }
+
       const existingByEmail = await prisma.user.findFirst({
         where: { email: profile.email },
         include: userInclude,
       });
 
-      if (existingByEmail) {
-        const authUserId = getUserIdFromAccessCookie(req);
-        const isSameAuthenticatedUser =
-          authUserId !== null && authUserId === existingByEmail.id;
-
-        if (isSameAuthenticatedUser) {
-          await prisma.authIdentity.upsert({
-            where: {
-              userId_provider: {
-                userId: existingByEmail.id,
-                provider: "google",
-              },
-            },
-            create: {
+      if (existingByEmail && existingByEmail.emailVerified) {
+        // Existing account already proved control of this email; attach Google
+        // (upsert handles the rare case of an old google identity on the same
+        // user that pointed to a different sub).
+        await prisma.authIdentity.upsert({
+          where: {
+            userId_provider: {
               userId: existingByEmail.id,
               provider: "google",
-              providerId: profile.sub,
             },
-            update: {
-              providerId: profile.sub,
-            },
-          });
-
-          user = existingByEmail;
-          await createSession(user, req, res);
-          return res.redirect(`${FRONTEND_URL}?auth=google_success`);
-        }
-        if (!profile.emailVerified || !existingByEmail.email) {
-          return res.redirect(`${FRONTEND_URL}?auth=google_error`);
-        }
-
-        const { rawToken } = await createEmailToken(
-          existingByEmail.id,
-          "merge_google",
-          MERGE_TOKEN_TTL_MS,
-          { sub: profile.sub, email: profile.email },
-        );
-
-        try {
-          await sendGoogleMergeConfirmationEmail(
-            existingByEmail.email,
-            rawToken,
-          );
-        } catch (mailError) {
-          console.error(
-            "Failed to send Google merge confirmation email:",
-            mailError,
-          );
-          return res.redirect(`${FRONTEND_URL}?auth=google_error`);
-        }
-
-        return res.redirect(`${FRONTEND_URL}?auth=google_pending_merge`);
+          },
+          create: {
+            userId: existingByEmail.id,
+            provider: "google",
+            providerId: profile.sub,
+          },
+          update: { providerId: profile.sub },
+        });
+        user = existingByEmail;
       } else {
+        // No verified owner: drop any unverified squat sharing the email and
+        // create a fresh google user.
+        await prisma.user.deleteMany({
+          where: { emailVerified: false, email: profile.email },
+        });
+
         const seed = profile.email.split("@")[0] || profile.name;
         const login = await generateUniqueLogin(seed);
 
@@ -759,7 +658,7 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
               login,
               email: profile.email,
               password: null,
-              emailVerified: profile.emailVerified,
+              emailVerified: true,
               photoUrl: profile.picture,
             },
             include: userInclude,
@@ -1025,57 +924,6 @@ export const setPassword = async (req: Request, res: Response) => {
   }
 };
 
-export const sendOneTimePassword = async (req: Request, res: Response) => {
-  try {
-    const userId = req.userId;
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized." });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return res.status(404).json({ error: "User not found." });
-    }
-    if (!user.email) {
-      return res
-        .status(400)
-        .json({ error: "Account has no email to deliver the password to." });
-    }
-
-    const otp = crypto.randomBytes(OTP_BYTES).toString("base64url");
-    const hashed = await bcrypt.hash(otp, saltRounds);
-
-    await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: userId },
-        data: { password: hashed },
-      });
-      await tx.authIdentity.upsert({
-        where: { userId_provider: { userId, provider: "local" } },
-        create: { userId, provider: "local" },
-        update: {},
-      });
-    });
-
-    try {
-      await sendOneTimePasswordEmail(user.email, otp);
-    } catch (mailError) {
-      console.error("Failed to send one-time password email:", mailError);
-      return res
-        .status(502)
-        .json({ error: "Failed to deliver the one-time password email." });
-    }
-
-    return res.status(200).json({
-      message:
-        "A one-time password has been sent to your email. Use it to sign in and change it from your account settings.",
-    });
-  } catch (error) {
-    console.error("Send OTP error:", error);
-    return res.status(500).json({ error: "Server error during OTP send." });
-  }
-};
-
 export const deleteAccount = async (req: Request, res: Response) => {
   try {
     const userId = req.userId;
@@ -1090,6 +938,9 @@ export const deleteAccount = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "User not found." });
     }
 
+    // Users with a password confirm via that password (sanity check against a
+    // leftover session). Google-only accounts skip it — the active session is
+    // proof enough, and there is no second factor we could ask for here.
     if (user.password) {
       if (!password) {
         return res
@@ -1100,12 +951,6 @@ export const deleteAccount = async (req: Request, res: Response) => {
       if (!match) {
         return res.status(401).json({ error: "Password is wrong." });
       }
-    } else {
-      return res.status(409).json({
-        error:
-          "This account has no password. Request an email confirmation via /auth/account/request-delete.",
-        requiresEmailConfirmation: true,
-      });
     }
 
     await prisma.user.delete({ where: { id: userId } });
@@ -1119,56 +964,6 @@ export const deleteAccount = async (req: Request, res: Response) => {
     return res
       .status(500)
       .json({ error: "Server error during account deletion." });
-  }
-};
-
-export const requestDeleteAccount = async (req: Request, res: Response) => {
-  try {
-    const userId = req.userId;
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized." });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) {
-      return res.status(404).json({ error: "User not found." });
-    }
-    if (!user.email) {
-      return res
-        .status(400)
-        .json({ error: "Account has no email to send confirmation to." });
-    }
-    if (user.password) {
-      return res.status(409).json({
-        error:
-          "This account has a password. Delete it directly with password confirmation.",
-      });
-    }
-
-    const { rawToken } = await createEmailToken(
-      user.id,
-      "delete_account",
-      DELETE_TOKEN_TTL_MS,
-    );
-
-    try {
-      await sendAccountDeletionEmail(user.email, rawToken);
-    } catch (mailError) {
-      console.error("Failed to send delete confirmation email:", mailError);
-      return res
-        .status(502)
-        .json({ error: "Failed to deliver the confirmation email." });
-    }
-
-    return res.status(200).json({
-      message:
-        "Account deletion confirmation has been sent to your email. The link expires in 1 hour.",
-    });
-  } catch (error) {
-    console.error("Request delete error:", error);
-    return res
-      .status(500)
-      .json({ error: "Server error during delete request." });
   }
 };
 
@@ -1241,28 +1036,5 @@ export const updateProfile = async (req: Request, res: Response) => {
     return res
       .status(500)
       .json({ error: "Server error during profile update." });
-  }
-};
-
-export const confirmDeleteAccount = async (req: Request, res: Response) => {
-  try {
-    const token = typeof req.query.token === "string" ? req.query.token : "";
-    if (!token) {
-      return res.redirect(`${FRONTEND_URL}?auth=delete_error`);
-    }
-
-    const result = await consumeEmailToken(token, "delete_account");
-    if (!result.ok) {
-      const param =
-        result.reason === "already_used" ? "already_deleted" : "delete_error";
-      return res.redirect(`${FRONTEND_URL}?auth=${param}`);
-    }
-
-    await prisma.user.delete({ where: { id: result.userId } });
-    clearAuthCookies(res);
-    return res.redirect(`${FRONTEND_URL}?auth=account_deleted`);
-  } catch (error) {
-    console.error("Confirm delete error:", error);
-    return res.redirect(`${FRONTEND_URL}?auth=delete_error`);
   }
 };

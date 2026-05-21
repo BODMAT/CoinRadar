@@ -125,13 +125,6 @@ export const authApi = createApi({
       invalidatesTags: ["User"],
     }),
 
-    sendOneTimePassword: builder.mutation<{ message: string }, void>({
-      query: () => ({
-        url: "auth/send-one-time-password",
-        method: "POST",
-      }),
-    }),
-
     deleteAccount: builder.mutation<{ message: string }, { password?: string }>(
       {
         query: (body) => ({
@@ -151,13 +144,6 @@ export const authApi = createApi({
         },
       },
     ),
-
-    requestDeleteAccount: builder.mutation<{ message: string }, void>({
-      query: () => ({
-        url: "auth/account/request-delete",
-        method: "POST",
-      }),
-    }),
 
     updateProfile: builder.mutation<
       { message: string; user: UserSafe },
@@ -190,8 +176,6 @@ export const {
   useGetCurrentUserQuery,
   useLogoutAllSessionsMutation,
   useSetPasswordMutation,
-  useSendOneTimePasswordMutation,
   useDeleteAccountMutation,
-  useRequestDeleteAccountMutation,
   useUpdateProfileMutation,
 } = authApi;

@@ -45,6 +45,11 @@ export const DeleteAccountSchema = z.object({
   password: z.string().min(1).optional(),
 });
 
+// photoUrl accepts http(s) URLs and base64 image data URLs only; rejects
+// arbitrary schemes (e.g. javascript:) so the value is always safe in <img src>.
+const PHOTO_URL_REGEX =
+  /^(https?:\/\/[^\s]+|data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]+)$/;
+
 export const UpdateProfileSchema = z.object({
   login: z
     .string()
@@ -55,6 +60,10 @@ export const UpdateProfileSchema = z.object({
   photoUrl: z
     .string()
     .max(800_000, "Image is too large (max ~600 KB).")
+    .refine(
+      (value) => value === "" || PHOTO_URL_REGEX.test(value),
+      "Photo must be an http(s) URL or a base64 image data URL.",
+    )
     .nullable()
     .optional(),
 });
