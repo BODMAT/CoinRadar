@@ -1,11 +1,6 @@
-import nodemailer, { type Transporter } from "nodemailer";
-
-const SMTP_HOST = process.env.SMTP_HOST;
-const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
-const SMTP_USER = process.env.SMTP_USER;
-const SMTP_PASS = process.env.SMTP_PASS;
-const SMTP_FROM =
-  process.env.SMTP_FROM || "CoinRadar <no-reply@coinradar.local>";
+const EMAIL_FROM =
+  process.env.EMAIL_FROM || "CoinRadar <no-reply@coinradar.local>";
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const API_PUBLIC_URL = process.env.API_PUBLIC_URL || "http://localhost:4000";
 
 export type EmailPurpose = "verify_email";
@@ -22,30 +17,6 @@ export interface SentEmailRecord {
 
 const captured: SentEmailRecord[] = [];
 
-let transporter: Transporter | null = null;
-
-const getTransporter = (): Transporter => {
-  if (transporter) return transporter;
-
-  if (process.env.NODE_ENV === "test") {
-    transporter = nodemailer.createTransport({ jsonTransport: true });
-  } else if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
-    transporter = nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_PORT === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-    });
-  } else {
-    transporter = nodemailer.createTransport({ jsonTransport: true });
-    console.warn(
-      "[emailService] SMTP_* env vars not set - using jsonTransport. Emails will be logged, not delivered.",
-    );
-  }
-
-  return transporter;
-};
-
 interface DispatchArgs {
   to: string;
   subject: string;
@@ -55,15 +26,15 @@ interface DispatchArgs {
   token?: string;
 }
 
-const dispatch = async (args: DispatchArgs) => {
+const parseSender = (from: string): { name: string; email: string } => {
+  const match = from.match(/^(.+?)\s*<(.+?)>$/);
+  if (match?.[1] && match?.[2])
+    return { name: match[1].trim(), email: match[2].trim() };
+  return { name: "CoinRadar", email: from.trim() };
+};
+
+const dispatch = async (args: DispatchArgs): Promise<void> => {
   const { to, subject, purpose, text, html, token } = args;
-  const info = await getTransporter().sendMail({
-    from: SMTP_FROM,
-    to,
-    subject,
-    text,
-    html,
-  });
 
   if (process.env.NODE_ENV === "test") {
     captured.push({
@@ -75,11 +46,37 @@ const dispatch = async (args: DispatchArgs) => {
       sentAt: new Date(),
       ...(token !== undefined && { token }),
     });
-  } else if (!SMTP_HOST) {
-    console.info(`[emailService][${purpose}] -> ${to}\n${text}`);
+    return;
   }
 
-  return info;
+  if (!BREVO_API_KEY) {
+    console.warn(
+      `[emailService] BREVO_API_KEY not set - email not sent.\n[${purpose}] -> ${to}\n${text}`,
+    );
+    return;
+  }
+
+  const sender = parseSender(EMAIL_FROM);
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": BREVO_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sender,
+      to: [{ email: to }],
+      subject,
+      textContent: text,
+      htmlContent: html,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Brevo API error ${response.status}: ${body}`);
+  }
 };
 
 const wrapHtml = (title: string, body: string): string => `<!DOCTYPE html>
