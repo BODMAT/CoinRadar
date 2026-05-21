@@ -9,6 +9,9 @@ export const UserSchema = z.object({
     .min(3, "Login must be at least 3 characters")
     .max(30),
   email: z.string().email().nullable().optional(),
+  emailVerified: z.boolean().optional(),
+  hasPassword: z.boolean().optional(),
+  photoUrl: z.string().nullable().optional(),
 
   token: z.string().optional(),
   wallets: z.array(WalletListItemResponseSchema).optional(),
@@ -23,7 +26,7 @@ export const RegisterSchema = z.object({
     .min(3, "Login must be at least 3 characters")
     .max(30),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  email: z.string().email("Invalid email format").optional().or(z.literal("")),
+  email: z.string().email("Invalid email format"),
 });
 
 export const LoginSchema = z.object({
@@ -39,4 +42,11 @@ export const AuthResponseSchema = z.object({
   user: UserSchema,
 });
 
+export const RegisterResponseSchema = z.object({
+  message: z.string(),
+  requiresVerification: z.literal(true),
+  email: z.string().email(),
+});
+
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
+export type RegisterResponse = z.infer<typeof RegisterResponseSchema>;

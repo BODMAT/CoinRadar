@@ -4,6 +4,7 @@ import {
   type AuthResponse,
   type Login,
   type Register,
+  type RegisterResponse,
   type UserSafe,
 } from "./auth.schema";
 import { setUserData, logout } from "./auth.slice";
@@ -18,23 +19,24 @@ export const authApi = createApi({
   baseQuery: baseQueryWithReauth,
   tagTypes: ["User"],
   endpoints: (builder) => ({
-    registerUser: builder.mutation<AuthResponse, Register>({
+    registerUser: builder.mutation<RegisterResponse, Register>({
       query: (credentials) => ({
         url: "auth/register",
         method: "POST",
         body: credentials,
       }),
-      async onQueryStarted(_, { dispatch, queryFulfilled }) {
-        try {
-          const { data: responseData } = await queryFulfilled;
-          const parsedUser: UserSafe = UserSchema.parse(responseData.user);
-          dispatch(setUserData(parsedUser));
-          dispatch(setWalletsList(parsedUser.wallets || []));
-        } catch (error) {
-          console.error("Registration error:", error);
-        }
-      },
       invalidatesTags: ["User"],
+    }),
+
+    resendVerification: builder.mutation<
+      { message: string },
+      { login: string }
+    >({
+      query: (body) => ({
+        url: "auth/resend-verification",
+        method: "POST",
+        body,
+      }),
     }),
 
     loginUser: builder.mutation<AuthResponse, Login>({
@@ -93,6 +95,76 @@ export const authApi = createApi({
       },
       invalidatesTags: ["User"],
     }),
+
+    logoutAllSessions: builder.mutation<{ message: string }, void>({
+      query: () => ({
+        url: "auth/logout-all",
+        method: "POST",
+      }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+        } finally {
+          dispatch(logout());
+          dispatch(clearWalletState());
+          dispatch(authApi.util.resetApiState());
+        }
+      },
+      invalidatesTags: ["User"],
+    }),
+
+    setPassword: builder.mutation<
+      { message: string },
+      { password: string; oldPassword?: string }
+    >({
+      query: (body) => ({
+        url: "auth/set-password",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["User"],
+    }),
+
+    deleteAccount: builder.mutation<{ message: string }, { password?: string }>(
+      {
+        query: (body) => ({
+          url: "auth/account",
+          method: "DELETE",
+          body,
+        }),
+        async onQueryStarted(_, { dispatch, queryFulfilled }) {
+          try {
+            await queryFulfilled;
+            dispatch(logout());
+            dispatch(clearWalletState());
+            dispatch(authApi.util.resetApiState());
+          } catch (error) {
+            console.error("Delete account error:", error);
+          }
+        },
+      },
+    ),
+
+    updateProfile: builder.mutation<
+      { message: string; user: UserSafe },
+      { login?: string; photoUrl?: string | null }
+    >({
+      query: (body) => ({
+        url: "auth/me",
+        method: "PATCH",
+        body,
+      }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data: responseData } = await queryFulfilled;
+          const parsedUser: UserSafe = UserSchema.parse(responseData.user);
+          dispatch(setUserData(parsedUser));
+        } catch (error) {
+          console.error("Update profile error:", error);
+        }
+      },
+      invalidatesTags: ["User"],
+    }),
   }),
 });
 
@@ -100,5 +172,10 @@ export const {
   useLogoutUserMutation,
   useLoginUserMutation,
   useRegisterUserMutation,
+  useResendVerificationMutation,
   useGetCurrentUserQuery,
+  useLogoutAllSessionsMutation,
+  useSetPasswordMutation,
+  useDeleteAccountMutation,
+  useUpdateProfileMutation,
 } = authApi;

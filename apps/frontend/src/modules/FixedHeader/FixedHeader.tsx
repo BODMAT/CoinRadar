@@ -3,6 +3,7 @@ import { menu, type MenuItem } from "./data";
 import { useBurgerMenu } from "../../hooks/useBurgerMenu";
 import { scrollToSectionById } from "../../utils/functions";
 import { Auth } from "../Auth/Auth";
+import { Settings } from "../Auth/Settings";
 
 export function FixedHeader() {
   const { isBurgerOpen, toggleBurger, isMobile } = useBurgerMenu();
@@ -36,6 +37,7 @@ export function FixedHeader() {
           </button>
         ))}
         <Auth />
+        <Settings />
       </>
     );
   };
@@ -81,11 +83,11 @@ export function FixedHeader() {
           )}
 
           <div
-            className={`fixed top-20 left-0 h-[calc(100vh-80px)] w-full z-50 transition-transform transitioned bg-black/75 text-white ${
+            className={`fixed top-20 left-0 h-[calc(100vh-80px)] w-full z-50 overflow-y-auto overscroll-contain transition-transform transitioned bg-black/75 text-white ${
               isBurgerOpen ? "translate-x-0" : "-translate-x-full"
             }`}
           >
-            <div className="flex flex-col items-center justify-center gap-20 py-15 text-3xl">
+            <div className="flex min-h-full flex-col items-center justify-start gap-20 py-15 text-3xl">
               {renderMenuButtons(true)}
             </div>
           </div>

@@ -10,22 +10,42 @@ export const resetDatabase = async (): Promise<void> => {
   await prisma.swapSettings.deleteMany();
   await prisma.wallet.deleteMany();
   await prisma.refreshToken.deleteMany();
+  await prisma.emailToken.deleteMany();
+  await prisma.authIdentity.deleteMany();
   await prisma.user.deleteMany();
 };
 
 export const registerAndCreateWallet = async () => {
   const agent = request.agent(getApp());
   const unique = `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+  const login = `user_${unique}`;
+  const password = "password123";
 
   const registerResponse = await agent.post("/api/auth/register").send({
-    login: `user_${unique}`,
-    password: "password123",
+    login,
+    password,
     email: `user_${unique}@mail.com`,
   });
 
   if (registerResponse.status !== 201) {
     throw new Error(
       `Registration failed: ${registerResponse.status} ${JSON.stringify(registerResponse.body)}`,
+    );
+  }
+
+  // Flip emailVerified directly; tests can't click the confirmation link.
+  await prisma.user.update({
+    where: { login },
+    data: { emailVerified: true },
+  });
+
+  const loginResponse = await agent
+    .post("/api/auth/login")
+    .send({ login, password });
+
+  if (loginResponse.status !== 200) {
+    throw new Error(
+      `Login after verification failed: ${loginResponse.status} ${JSON.stringify(loginResponse.body)}`,
     );
   }
 
