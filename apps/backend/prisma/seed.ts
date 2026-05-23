@@ -25,6 +25,10 @@ function dateDaysAgo(daysAgo: number): Date {
   return new Date(NOW.getTime() - daysAgo * 24 * 60 * 60 * 1000);
 }
 
+function dateDaysAhead(daysAhead: number): Date {
+  return new Date(NOW.getTime() + daysAhead * 24 * 60 * 60 * 1000);
+}
+
 async function main() {
   await prisma.transaction.deleteMany();
   await prisma.swapSettings.deleteMany();
@@ -59,15 +63,105 @@ async function main() {
       email: "taras@coinradar.local",
       emailVerified: true,
     },
+    {
+      id: randomUUID(),
+      login: "olena",
+      password: passwordHash,
+      email: "olena@coinradar.local",
+      emailVerified: true,
+    },
+    {
+      id: randomUUID(),
+      login: "mykola",
+      password: passwordHash,
+      email: "mykola@coinradar.local",
+      emailVerified: false,
+    },
+    {
+      id: randomUUID(),
+      login: "anna",
+      password: passwordHash,
+      email: "anna@coinradar.local",
+      emailVerified: true,
+    },
+    {
+      id: randomUUID(),
+      login: "dmytro",
+      password: passwordHash,
+      email: "dmytro@coinradar.local",
+      emailVerified: true,
+    },
+    {
+      id: randomUUID(),
+      login: "iryna",
+      password: passwordHash,
+      email: "iryna@coinradar.local",
+      emailVerified: false,
+    },
+    {
+      id: randomUUID(),
+      login: "petro",
+      password: passwordHash,
+      email: "petro@coinradar.local",
+      emailVerified: true,
+    },
+    {
+      id: randomUUID(),
+      login: "svitlana",
+      password: passwordHash,
+      email: "svitlana@coinradar.local",
+      emailVerified: true,
+    },
+    {
+      id: randomUUID(),
+      login: "andriy",
+      password: passwordHash,
+      email: "andriy@coinradar.local",
+      emailVerified: true,
+    },
+    {
+      id: randomUUID(),
+      login: "maria",
+      password: passwordHash,
+      email: "maria@coinradar.local",
+      emailVerified: true,
+    },
+    {
+      id: randomUUID(),
+      login: "yaroslav",
+      password: null,
+      email: "yaroslav.google@gmail.com",
+      emailVerified: true,
+      photoUrl: "https://lh3.googleusercontent.com/a/yaroslav",
+    },
+    {
+      id: randomUUID(),
+      login: "oksana",
+      password: null,
+      email: "oksana.google@gmail.com",
+      emailVerified: true,
+      photoUrl: "https://lh3.googleusercontent.com/a/oksana",
+    },
+    {
+      id: randomUUID(),
+      login: "ivan",
+      password: passwordHash,
+      email: "ivan@coinradar.local",
+      emailVerified: true,
+    },
   ];
 
   await prisma.user.createMany({ data: users });
   await prisma.authIdentity.createMany({
-    data: users.map((user) => ({
-      id: randomUUID(),
-      userId: user.id,
-      provider: "local",
-    })),
+    data: users.map((user, i) => {
+      const isGoogle = user.password === null;
+      return {
+        id: randomUUID(),
+        userId: user.id,
+        provider: isGoogle ? "google" : "local",
+        providerId: isGoogle ? `google-sub-${10000 + i}` : null,
+      };
+    }),
   });
 
   const wallets = users.flatMap((user) => [
@@ -533,8 +627,52 @@ async function main() {
     ],
   ];
 
-  const transactions = wallets.flatMap((wallet, walletIndex) =>
-    txTemplates[walletIndex].map((tx) => ({
+  const coinCycle: ("btc" | "eth" | "sol" | "bnb")[] = ["btc", "eth", "sol", "bnb"];
+  const basePrices: Record<string, number> = {
+    btc: 65000,
+    eth: 3100,
+    sol: 155,
+    bnb: 600,
+  };
+  const baseQuantities: Record<string, string> = {
+    btc: "0.0150000000",
+    eth: "0.3000000000",
+    sol: "1.4000000000",
+    bnb: "0.4000000000",
+  };
+
+  const fallbackTemplate = (idx: number): TxInput[] => {
+    const c1 = coinCycle[idx % 4];
+    const c2 = coinCycle[(idx + 1) % 4];
+    const c3 = coinCycle[(idx + 2) % 4];
+    return [
+      {
+        coinSymbol: c1,
+        buyOrSell: "buy",
+        price: String(basePrices[c1] + idx * 25),
+        quantity: baseQuantities[c1],
+        daysAgo: (idx % 6) + 1,
+      },
+      {
+        coinSymbol: c2,
+        buyOrSell: "buy",
+        price: String(basePrices[c2] + idx * 12),
+        quantity: baseQuantities[c2],
+        daysAgo: (idx % 7) + 2,
+      },
+      {
+        coinSymbol: c3,
+        buyOrSell: idx % 3 === 0 ? "sell" : "buy",
+        price: String(basePrices[c3] - idx * 8),
+        quantity: baseQuantities[c3],
+        daysAgo: (idx % 5) + 4,
+      },
+    ];
+  };
+
+  const transactions = wallets.flatMap((wallet, walletIndex) => {
+    const template = txTemplates[walletIndex] ?? fallbackTemplate(walletIndex);
+    return template.map((tx) => ({
       id: randomUUID(),
       walletId: wallet.id,
       coinSymbol: tx.coinSymbol,
@@ -543,10 +681,364 @@ async function main() {
       price: tx.price,
       quantity: tx.quantity,
       createdAt: dateDaysAgo(tx.daysAgo),
-    })),
-  );
+    }));
+  });
 
   await prisma.transaction.createMany({ data: transactions });
+
+  // ===== SwapSettings (one per wallet, hand-crafted) =====
+  // walletId is @unique on SwapSettings, so one row per chosen wallet.
+  const swapSettings = [
+    { walletId: wallets[0].id, swapEnabled: true, stableCoins: ["usdt", "usdc"] },
+    { walletId: wallets[1].id, swapEnabled: false, stableCoins: ["usdt"] },
+    { walletId: wallets[2].id, swapEnabled: true, stableCoins: ["usdt", "usdc", "dai"] },
+    { walletId: wallets[3].id, swapEnabled: true, stableCoins: ["usdc"] },
+    { walletId: wallets[4].id, swapEnabled: false, stableCoins: ["usdt", "usdc"] },
+    { walletId: wallets[5].id, swapEnabled: true, stableCoins: ["usdt"] },
+    { walletId: wallets[6].id, swapEnabled: true, stableCoins: ["usdt", "usdc"] },
+    { walletId: wallets[7].id, swapEnabled: false, stableCoins: ["usdc"] },
+    { walletId: wallets[8].id, swapEnabled: true, stableCoins: ["usdt", "dai"] },
+    { walletId: wallets[9].id, swapEnabled: true, stableCoins: ["usdt", "usdc"] },
+    { walletId: wallets[10].id, swapEnabled: false, stableCoins: ["usdt"] },
+    { walletId: wallets[11].id, swapEnabled: true, stableCoins: ["usdc", "dai"] },
+    { walletId: wallets[12].id, swapEnabled: true, stableCoins: ["usdt", "usdc"] },
+    { walletId: wallets[13].id, swapEnabled: true, stableCoins: ["usdt"] },
+    { walletId: wallets[14].id, swapEnabled: false, stableCoins: ["usdt", "usdc"] },
+    { walletId: wallets[15].id, swapEnabled: true, stableCoins: ["usdt", "usdc", "dai"] },
+    { walletId: wallets[16].id, swapEnabled: true, stableCoins: ["usdc"] },
+    { walletId: wallets[17].id, swapEnabled: false, stableCoins: ["usdt", "usdc"] },
+  ].map((row) => ({ id: randomUUID(), ...row }));
+
+  await prisma.swapSettings.createMany({ data: swapSettings });
+
+  // ===== RefreshTokens (hand-crafted, distributed across users) =====
+  // tokenHash is @unique; mix of active, rotated, revoked, expired sessions.
+  const refreshTokens = [
+    {
+      userId: users[0].id,
+      tokenHash: "seed-rt-001-bohdan-chrome-win",
+      expiresAt: dateDaysAhead(7),
+      createdAt: dateDaysAgo(1),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0",
+      ip: "192.168.1.10",
+    },
+    {
+      userId: users[0].id,
+      tokenHash: "seed-rt-002-bohdan-ios-safari",
+      expiresAt: dateDaysAhead(14),
+      createdAt: dateDaysAgo(3),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5) Safari/605.1.15",
+      ip: "10.0.0.42",
+    },
+    {
+      userId: users[1].id,
+      tokenHash: "seed-rt-003-natalia-firefox",
+      expiresAt: dateDaysAhead(6),
+      createdAt: dateDaysAgo(2),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64) Firefox/126.0",
+      ip: "185.10.20.30",
+    },
+    {
+      userId: users[1].id,
+      tokenHash: "seed-rt-004-natalia-rotated-old",
+      expiresAt: dateDaysAhead(2),
+      createdAt: dateDaysAgo(5),
+      revokedAt: dateDaysAgo(2),
+      replacedByTokenHash: "seed-rt-003-natalia-firefox",
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64) Firefox/126.0",
+      ip: "185.10.20.30",
+    },
+    {
+      userId: users[2].id,
+      tokenHash: "seed-rt-005-taras-edge",
+      expiresAt: dateDaysAhead(10),
+      createdAt: dateDaysAgo(1),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0) Edge/124.0.0.0",
+      ip: "77.88.55.66",
+    },
+    {
+      userId: users[3].id,
+      tokenHash: "seed-rt-006-olena-chrome-mac",
+      expiresAt: dateDaysAhead(5),
+      createdAt: dateDaysAgo(4),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) Chrome/124.0.0.0",
+      ip: "82.118.20.5",
+    },
+    {
+      userId: users[3].id,
+      tokenHash: "seed-rt-007-olena-expired",
+      expiresAt: dateDaysAgo(2),
+      createdAt: dateDaysAgo(35),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) Chrome/123.0.0.0",
+      ip: "82.118.20.5",
+    },
+    {
+      userId: users[5].id,
+      tokenHash: "seed-rt-008-anna-android",
+      expiresAt: dateDaysAhead(12),
+      createdAt: dateDaysAgo(2),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/124.0.0.0",
+      ip: "45.32.18.7",
+    },
+    {
+      userId: users[6].id,
+      tokenHash: "seed-rt-009-dmytro-chrome",
+      expiresAt: dateDaysAhead(9),
+      createdAt: dateDaysAgo(1),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0",
+      ip: "194.44.20.100",
+    },
+    {
+      userId: users[6].id,
+      tokenHash: "seed-rt-010-dmytro-revoked-logout",
+      expiresAt: dateDaysAhead(1),
+      createdAt: dateDaysAgo(6),
+      revokedAt: dateDaysAgo(4),
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/123.0.0.0",
+      ip: "194.44.20.100",
+    },
+    {
+      userId: users[8].id,
+      tokenHash: "seed-rt-011-petro-firefox",
+      expiresAt: dateDaysAhead(7),
+      createdAt: dateDaysAgo(2),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; rv:126.0) Gecko/20100101 Firefox/126.0",
+      ip: "176.36.10.55",
+    },
+    {
+      userId: users[9].id,
+      tokenHash: "seed-rt-012-svitlana-mac-safari",
+      expiresAt: dateDaysAhead(11),
+      createdAt: dateDaysAgo(3),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) Safari/605.1.15",
+      ip: "212.90.180.22",
+    },
+    {
+      userId: users[10].id,
+      tokenHash: "seed-rt-013-andriy-chrome-linux",
+      expiresAt: dateDaysAhead(8),
+      createdAt: dateDaysAgo(1),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (X11; Linux x86_64) Chrome/124.0.0.0",
+      ip: "31.42.18.90",
+    },
+    {
+      userId: users[11].id,
+      tokenHash: "seed-rt-014-maria-ipad",
+      expiresAt: dateDaysAhead(13),
+      createdAt: dateDaysAgo(2),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (iPad; CPU OS 17_5) Safari/605.1.15",
+      ip: "37.115.220.18",
+    },
+    {
+      userId: users[12].id,
+      tokenHash: "seed-rt-015-yaroslav-google",
+      expiresAt: dateDaysAhead(14),
+      createdAt: dateDaysAgo(1),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0",
+      ip: "91.250.100.40",
+    },
+    {
+      userId: users[13].id,
+      tokenHash: "seed-rt-016-oksana-google",
+      expiresAt: dateDaysAhead(7),
+      createdAt: dateDaysAgo(2),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Linux; Android 14; SM-S908) Chrome/124.0.0.0",
+      ip: "188.163.45.12",
+    },
+    {
+      userId: users[14].id,
+      tokenHash: "seed-rt-017-ivan-chrome",
+      expiresAt: dateDaysAhead(10),
+      createdAt: dateDaysAgo(1),
+      revokedAt: null,
+      replacedByTokenHash: null,
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0.0.0",
+      ip: "46.118.77.200",
+    },
+    {
+      userId: users[14].id,
+      tokenHash: "seed-rt-018-ivan-old-revoked",
+      expiresAt: dateDaysAhead(3),
+      createdAt: dateDaysAgo(8),
+      revokedAt: dateDaysAgo(1),
+      replacedByTokenHash: "seed-rt-017-ivan-chrome",
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/123.0.0.0",
+      ip: "46.118.77.200",
+    },
+  ].map((row) => ({ id: randomUUID(), ...row }));
+
+  await prisma.refreshToken.createMany({ data: refreshTokens });
+
+  // ===== EmailTokens (verify_email + reset_password) =====
+  const emailTokens = [
+    {
+      userId: users[4].id, // mykola — unverified
+      tokenHash: "seed-et-001-verify-mykola",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: null,
+      createdAt: dateDaysAgo(0),
+    },
+    {
+      userId: users[7].id, // iryna — unverified
+      tokenHash: "seed-et-002-verify-iryna",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: null,
+      createdAt: dateDaysAgo(0),
+    },
+    {
+      userId: users[0].id,
+      tokenHash: "seed-et-003-verify-bohdan-used",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(30),
+      createdAt: dateDaysAgo(31),
+    },
+    {
+      userId: users[1].id,
+      tokenHash: "seed-et-004-verify-natalia-used",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(28),
+      createdAt: dateDaysAgo(29),
+    },
+    {
+      userId: users[2].id,
+      tokenHash: "seed-et-005-verify-taras-used",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(25),
+      createdAt: dateDaysAgo(26),
+    },
+    {
+      userId: users[3].id,
+      tokenHash: "seed-et-006-verify-olena-used",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(20),
+      createdAt: dateDaysAgo(21),
+    },
+    {
+      userId: users[5].id,
+      tokenHash: "seed-et-007-verify-anna-used",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(18),
+      createdAt: dateDaysAgo(19),
+    },
+    {
+      userId: users[0].id,
+      tokenHash: "seed-et-008-reset-bohdan-pending",
+      purpose: "reset_password",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: null,
+      createdAt: dateDaysAgo(0),
+    },
+    {
+      userId: users[1].id,
+      tokenHash: "seed-et-009-reset-natalia-used",
+      purpose: "reset_password",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(10),
+      createdAt: dateDaysAgo(10),
+    },
+    {
+      userId: users[3].id,
+      tokenHash: "seed-et-010-reset-olena-expired",
+      purpose: "reset_password",
+      expiresAt: dateDaysAgo(5),
+      consumedAt: null,
+      createdAt: dateDaysAgo(6),
+    },
+    {
+      userId: users[6].id,
+      tokenHash: "seed-et-011-verify-dmytro-used",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(15),
+      createdAt: dateDaysAgo(16),
+    },
+    {
+      userId: users[8].id,
+      tokenHash: "seed-et-012-verify-petro-used",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(12),
+      createdAt: dateDaysAgo(13),
+    },
+    {
+      userId: users[9].id,
+      tokenHash: "seed-et-013-reset-svitlana-used",
+      purpose: "reset_password",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(7),
+      createdAt: dateDaysAgo(7),
+    },
+    {
+      userId: users[10].id,
+      tokenHash: "seed-et-014-verify-andriy-used",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(9),
+      createdAt: dateDaysAgo(10),
+    },
+    {
+      userId: users[11].id,
+      tokenHash: "seed-et-015-verify-maria-used",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(8),
+      createdAt: dateDaysAgo(9),
+    },
+    {
+      userId: users[14].id,
+      tokenHash: "seed-et-016-reset-ivan-pending",
+      purpose: "reset_password",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: null,
+      createdAt: dateDaysAgo(0),
+    },
+    {
+      userId: users[14].id,
+      tokenHash: "seed-et-017-verify-ivan-used",
+      purpose: "verify_email",
+      expiresAt: dateDaysAhead(1),
+      consumedAt: dateDaysAgo(22),
+      createdAt: dateDaysAgo(23),
+    },
+  ].map((row) => ({ id: randomUUID(), ...row }));
+
+  await prisma.emailToken.createMany({ data: emailTokens });
 
   const beforePivot = transactions.filter(
     (tx) => tx.createdAt < PIVOT_DATE,
@@ -555,9 +1047,13 @@ async function main() {
 
   console.log(`Seed completed:
 - users: ${users.length}
+- authIdentities: ${users.length}
 - wallets: ${wallets.length}
 - transactions: ${transactions.length}
-- password for all seeded users: ${seedPassword}
+- swapSettings: ${swapSettings.length}
+- refreshTokens: ${refreshTokens.length}
+- emailTokens: ${emailTokens.length}
+- password for all seeded users (except google-only): ${seedPassword}
 - before ${PIVOT_DATE.toISOString()}: ${beforePivot}
 - on/after ${PIVOT_DATE.toISOString()}: ${afterPivot}`);
 }

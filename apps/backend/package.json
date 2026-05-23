@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "prisma": "prisma",
-    "seed": "tsx ./src/prisma.ts",
+    "seed": "tsx --env-file=.env ./prisma/seed.ts",
+    "db:reset": "prisma migrate reset --force --skip-seed && npm run seed",
+    "studio": "prisma studio",
     "build": "prisma generate && tsc",
     "test": "jest --config ./jest.config.cjs --runInBand",
     "test:integration": "jest --config ./jest.config.cjs --runInBand"
