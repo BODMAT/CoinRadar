@@ -12,5 +12,5 @@ export const CreateSwapSchema = z.object({
 
 export const UpdateSwapSettingsSchema = z.object({
   swapEnabled: z.boolean().optional(),
-  stableCoins: z.array(z.string().trim().toLowerCase().min(1)).optional(),
+  stableCoin: z.string().trim().toLowerCase().min(1).optional(),
 });

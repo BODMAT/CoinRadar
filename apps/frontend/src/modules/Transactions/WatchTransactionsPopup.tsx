@@ -7,6 +7,7 @@ import {
 import { closePopup, openPopup } from "../../portals/popup.slice";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { ChangeTransactionPopup } from "./ChangeTransactionPopup";
+import { SwapDeleteConfirmPopup } from "./SwapDeleteConfirmPopup";
 import { useGetAllCoinsQuery } from "../AllCrypto/all-crypto.api";
 import { extractApiErrorMessage } from "../../utils/functions";
 import { TransactionRow, TransactionRowSkeleton } from "./TransactionRow";
@@ -96,6 +97,21 @@ export function WatchTransactionsPopup({
     }
   };
 
+  const handleDeleteSwap = (transactionId: string) => {
+    if (!selectedWalletId) return;
+    dispatch(
+      openPopup({
+        title: "Delete Swap",
+        children: (
+          <SwapDeleteConfirmPopup
+            walletId={selectedWalletId}
+            transactionId={transactionId}
+          />
+        ),
+      }),
+    );
+  };
+
   const handleChangeTransaction = (transactionId: string) => {
     dispatch(
       openPopup({
@@ -127,7 +143,11 @@ export function WatchTransactionsPopup({
                 key={transaction.id}
                 transaction={transaction}
                 onEdit={() => handleChangeTransaction(transaction.id)}
-                onDelete={() => handleDeleteTransaction(transaction.id)}
+                onDelete={() =>
+                  transaction.swapGroupId
+                    ? handleDeleteSwap(transaction.id)
+                    : handleDeleteTransaction(transaction.id)
+                }
                 isDeleting={isDeleting}
               />
             ))}

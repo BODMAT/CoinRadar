@@ -199,7 +199,7 @@ export const getSwapSettings = async (req: Request, res: Response) => {
       return res.status(200).json({
         walletId,
         swapEnabled: false,
-        stableCoins: ["usdt", "usdc"],
+        stableCoin: "usdt",
       });
     }
 
@@ -223,9 +223,9 @@ export const updateSwapSettings = async (req: Request, res: Response) => {
       return handleZodError(res, validationResult.error);
     }
 
-    const { swapEnabled, stableCoins } = validationResult.data;
+    const { swapEnabled, stableCoin } = validationResult.data;
 
-    if (swapEnabled === undefined && stableCoins === undefined) {
+    if (swapEnabled === undefined && stableCoin === undefined) {
       return res.status(400).json({ error: "No fields provided for update." });
     }
 
@@ -233,12 +233,12 @@ export const updateSwapSettings = async (req: Request, res: Response) => {
       where: { walletId },
       update: {
         ...(swapEnabled !== undefined ? { swapEnabled } : {}),
-        ...(stableCoins !== undefined ? { stableCoins } : {}),
+        ...(stableCoin !== undefined ? { stableCoin } : {}),
       },
       create: {
         walletId,
         swapEnabled: swapEnabled ?? false,
-        stableCoins: stableCoins ?? ["usdt", "usdc"],
+        stableCoin: stableCoin ?? "usdt",
       },
     });
 

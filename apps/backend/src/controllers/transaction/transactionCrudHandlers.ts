@@ -303,6 +303,54 @@ export const deleteTransaction = async (req: Request, res: Response) => {
     if (!transactionToDelete)
       return res.status(404).json({ error: "Transaction not found" });
 
+    // Swap: cascade-delete both legs atomically
+    if (transactionToDelete.swapGroupId !== null) {
+      const swapGroupId = transactionToDelete.swapGroupId;
+
+      const swapGroup = await prisma.$queryRaw<TransactionRow[]>`
+        SELECT
+          "id", "walletId", "coinSymbol", "swapGroupId",
+          "buyOrSell", "price", "quantity", "createdAt", "updatedAt"
+        FROM "Transaction"
+        WHERE "swapGroupId" = ${swapGroupId};
+      `;
+
+      // Validate balance only for the buy leg
+      for (const swapTx of swapGroup) {
+        if (swapTx.buyOrSell !== "buy") continue;
+
+        const remaining = await prisma.$queryRaw<
+          { buyOrSell: "buy" | "sell"; quantity: number | string }[]
+        >`
+          SELECT "buyOrSell", "quantity"
+          FROM "Transaction"
+          WHERE
+            "walletId" = ${walletId}
+            AND "coinSymbol" = ${swapTx.coinSymbol}
+            AND "swapGroupId" IS DISTINCT FROM ${swapGroupId}
+          ORDER BY "createdAt" ASC, "id" ASC;
+        `;
+
+        let runningBalance = 0;
+        for (const tx of remaining) {
+          const qty = Number(tx.quantity);
+          runningBalance += tx.buyOrSell === "buy" ? qty : -qty;
+          if (runningBalance < 0) {
+            return res.status(400).json({
+              error: `Cannot delete swap. This would break chronological balance for ${swapTx.coinSymbol.toUpperCase()}.`,
+            });
+          }
+        }
+      }
+
+      await prisma.$executeRaw`
+        DELETE FROM "Transaction"
+        WHERE "swapGroupId" = ${swapGroupId};
+      `;
+
+      return res.status(200).json({ message: "Swap deleted", swapGroupId });
+    }
+
     const symbol = transactionToDelete.coinSymbol;
 
     if (transactionToDelete.buyOrSell === "buy") {
@@ -407,6 +455,13 @@ export const updateTransaction = async (req: Request, res: Response) => {
 
     if (!oldTransaction)
       return res.status(404).json({ error: "Transaction not found" });
+
+    if (oldTransaction.swapGroupId !== null) {
+      return res.status(403).json({
+        error:
+          "Swap transactions cannot be edited individually. Delete the swap to remove both legs.",
+      });
+    }
 
     const validationResult = CreateTransactionDto.omit({
       walletId: true,

@@ -69,6 +69,8 @@ export function ChangeTransactionPopup({
   if (!selectedWalletId || isLoading || !transaction)
     return <div className="p-4 text-center">Loading...</div>;
 
+  const isSwap = !!transaction.swapGroupId;
+
   const currentCoinInWallet = coinStats?.totalQuantity || 0;
 
   const handleChange = (
@@ -164,7 +166,13 @@ export function ChangeTransactionPopup({
         </div>
       </div>
 
-      {alert && (
+      {isSwap && (
+        <div className="bg-sky-500/10 text-sky-300 border border-sky-400/30 p-3 rounded text-sm text-center">
+          Swap transactions cannot be edited individually.
+        </div>
+      )}
+
+      {!isSwap && alert && (
         <div className="bg-red-100 text-red-700 p-2 rounded border border-red-200 text-sm text-center">
           {alert}
         </div>
@@ -174,7 +182,7 @@ export function ChangeTransactionPopup({
         className="flex flex-col gap-4"
         onSubmit={(e) => {
           e.preventDefault();
-          handleSubmit();
+          if (!isSwap) handleSubmit();
         }}
       >
         <TransactionFormFields
@@ -184,6 +192,7 @@ export function ChangeTransactionPopup({
           isLoading={isUpdating}
           submitLabel="Update Transaction"
           loadingLabel="Saving..."
+          disabled={isSwap}
         />
       </form>
     </div>

@@ -105,6 +105,6 @@ model SwapSettings {
   id          String   @id @default(uuid())
   walletId    String   @unique
   swapEnabled Boolean  @default(false)
-  stableCoins String[] @default(["usdt", "usdc"])
+  stableCoin  String   @default("usdt")
   wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
 }

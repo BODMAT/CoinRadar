@@ -30,15 +30,16 @@ export const swapApi = createApi({
       onQueryStarted: async (_, { dispatch, queryFulfilled }) => {
         try {
           await queryFulfilled;
-          dispatch(
-            transactionApi.util.invalidateTags([
-              { type: "Transaction", id: "LIST" },
-            ]),
-          );
-          dispatch(walletApi.util.invalidateTags(["Wallet"]));
-        } catch (error) {
-          console.error("Failed to invalidate tags after createSwap", error);
+        } catch {
+          // Swap failed — the calling component handles this via unwrap()
+          return;
         }
+        dispatch(
+          transactionApi.util.invalidateTags([
+            { type: "Transaction", id: "LIST" },
+          ]),
+        );
+        dispatch(walletApi.util.invalidateTags(["Wallet"]));
       },
     }),
 

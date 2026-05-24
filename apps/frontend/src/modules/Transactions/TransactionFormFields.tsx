@@ -17,6 +17,8 @@ interface TransactionFormFieldsProps {
   loadingLabel: string;
   /** Optional slot rendered between the Type select and the Price/Qty grid (e.g. swap toggle). */
   swapSlot?: React.ReactNode;
+  /** Disables all inputs and the submit button (e.g. for swap transactions that cannot be edited). */
+  disabled?: boolean;
 }
 
 export function TransactionFormFields({
@@ -27,6 +29,7 @@ export function TransactionFormFields({
   submitLabel,
   loadingLabel,
   swapSlot,
+  disabled = false,
 }: TransactionFormFieldsProps) {
   return (
     <>
@@ -34,10 +37,11 @@ export function TransactionFormFields({
         <label className="text-sm font-bold">Type</label>
         <select
           required
+          disabled={disabled}
           name="buyOrSell"
           value={form.buyOrSell}
           onChange={onChange}
-          className={`p-2 border-2 rounded font-bold ${form.buyOrSell === "buy" ? "border-green-500 text-green-600" : "border-red-500 text-red-600"}`}
+          className={`p-2 border-2 rounded font-bold disabled:opacity-50 disabled:cursor-not-allowed ${form.buyOrSell === "buy" ? "border-green-500 text-green-600" : "border-red-500 text-red-600"}`}
         >
           <option value="buy">Buy</option>
           <option value="sell">Sell</option>
@@ -51,7 +55,8 @@ export function TransactionFormFields({
           <label className="text-sm font-bold">Price</label>
           <input
             required
-            className="p-2 border-2 border-gray-300 rounded focus:border-blue-500 outline-none"
+            disabled={disabled}
+            className="p-2 border-2 border-gray-300 rounded focus:border-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             type="text"
             name="price"
             value={form.price}
@@ -62,7 +67,8 @@ export function TransactionFormFields({
           <label className="text-sm font-bold">Quantity</label>
           <input
             required
-            className="p-2 border-2 border-gray-300 rounded focus:border-blue-500 outline-none"
+            disabled={disabled}
+            className="p-2 border-2 border-gray-300 rounded focus:border-blue-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
             type="text"
             name="quantity"
             value={form.quantity}
@@ -75,7 +81,8 @@ export function TransactionFormFields({
         <label className="text-sm font-bold">Total</label>
         <input
           required
-          className="p-2 border-2 border-gray-200 rounded"
+          disabled={disabled}
+          className="p-2 border-2 border-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
           type="text"
           name="total_price"
           value={form.total_price}
@@ -87,8 +94,8 @@ export function TransactionFormFields({
         <label className="text-sm font-bold">Date</label>
         <input
           required
-          className="p-2 border-2 border-gray-300 rounded text-white [&::-webkit-calendar-picker-indicator]:invert
-    [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+          disabled={disabled}
+          className="p-2 border-2 border-gray-300 rounded text-white [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           type="datetime-local"
           name="createdAt"
           value={form.createdAt}
@@ -99,8 +106,8 @@ export function TransactionFormFields({
 
       <button
         type="submit"
-        disabled={!form.quantity || isLoading}
-        className="mt-2 p-3 bg-black text-white rounded-lg font-bold hover:opacity-80 disabled:opacity-50 transition-all"
+        disabled={disabled || !form.quantity || isLoading}
+        className="mt-2 p-3 bg-black text-white rounded-lg font-bold hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
       >
         {isLoading ? loadingLabel : submitLabel}
       </button>
