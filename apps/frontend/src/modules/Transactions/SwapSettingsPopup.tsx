@@ -4,6 +4,8 @@ import {
   useUpdateSwapSettingsMutation,
 } from "./swap.api";
 
+const AVAILABLE_STABLE_COINS = ["usdt", "usdc"] as const;
+
 export function SwapSettingsPopup() {
   const selectedWalletId = useAppSelector(
     (state) => state.selectedWallet.selectedWalletId,
@@ -19,8 +21,7 @@ export function SwapSettingsPopup() {
   if (!selectedWalletId) return null;
 
   const swapEnabled = settings?.swapEnabled ?? false;
-  const stableCoins = settings?.stableCoins ?? ["usdt", "usdc"];
-  const activeStableCoin = stableCoins[0] || "usdt";
+  const activeStableCoin = settings?.stableCoin ?? "usdt";
 
   const handleToggle = async () => {
     await updateSwapSettings({
@@ -30,14 +31,9 @@ export function SwapSettingsPopup() {
   };
 
   const handleSelectStableCoin = async (selectedCoin: string) => {
-    const reordered = [
-      selectedCoin,
-      ...stableCoins.filter((coin) => coin !== selectedCoin),
-    ];
-
     await updateSwapSettings({
       walletId: selectedWalletId,
-      data: { stableCoins: reordered },
+      data: { stableCoin: selectedCoin },
     });
   };
 
@@ -60,7 +56,7 @@ export function SwapSettingsPopup() {
       <div className="flex flex-col gap-2 p-3 border border-gray-300 rounded">
         <label className="text-sm font-bold">Stable coin for swap</label>
         <div className="flex gap-3 flex-wrap">
-          {stableCoins.map((coin) => {
+          {AVAILABLE_STABLE_COINS.map((coin) => {
             const isActive = coin === activeStableCoin;
             return (
               <label

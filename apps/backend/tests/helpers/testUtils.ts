@@ -70,7 +70,7 @@ export const enableSwap = async (agent: TestAgent, walletId: string) => {
     .patch(`/api/wallets/${walletId}/swap-settings`)
     .send({
       swapEnabled: true,
-      stableCoins: ["usdt", "usdc"],
+      stableCoin: "usdt",
     });
 
   if (response.status !== 200) {

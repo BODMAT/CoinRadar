@@ -627,7 +627,12 @@ async function main() {
     ],
   ];
 
-  const coinCycle: ("btc" | "eth" | "sol" | "bnb")[] = ["btc", "eth", "sol", "bnb"];
+  const coinCycle: ("btc" | "eth" | "sol" | "bnb")[] = [
+    "btc",
+    "eth",
+    "sol",
+    "bnb",
+  ];
   const basePrices: Record<string, number> = {
     btc: 65000,
     eth: 3100,
@@ -689,24 +694,24 @@ async function main() {
   // ===== SwapSettings (one per wallet, hand-crafted) =====
   // walletId is @unique on SwapSettings, so one row per chosen wallet.
   const swapSettings = [
-    { walletId: wallets[0].id, swapEnabled: true, stableCoins: ["usdt", "usdc"] },
-    { walletId: wallets[1].id, swapEnabled: false, stableCoins: ["usdt"] },
-    { walletId: wallets[2].id, swapEnabled: true, stableCoins: ["usdt", "usdc", "dai"] },
-    { walletId: wallets[3].id, swapEnabled: true, stableCoins: ["usdc"] },
-    { walletId: wallets[4].id, swapEnabled: false, stableCoins: ["usdt", "usdc"] },
-    { walletId: wallets[5].id, swapEnabled: true, stableCoins: ["usdt"] },
-    { walletId: wallets[6].id, swapEnabled: true, stableCoins: ["usdt", "usdc"] },
-    { walletId: wallets[7].id, swapEnabled: false, stableCoins: ["usdc"] },
-    { walletId: wallets[8].id, swapEnabled: true, stableCoins: ["usdt", "dai"] },
-    { walletId: wallets[9].id, swapEnabled: true, stableCoins: ["usdt", "usdc"] },
-    { walletId: wallets[10].id, swapEnabled: false, stableCoins: ["usdt"] },
-    { walletId: wallets[11].id, swapEnabled: true, stableCoins: ["usdc", "dai"] },
-    { walletId: wallets[12].id, swapEnabled: true, stableCoins: ["usdt", "usdc"] },
-    { walletId: wallets[13].id, swapEnabled: true, stableCoins: ["usdt"] },
-    { walletId: wallets[14].id, swapEnabled: false, stableCoins: ["usdt", "usdc"] },
-    { walletId: wallets[15].id, swapEnabled: true, stableCoins: ["usdt", "usdc", "dai"] },
-    { walletId: wallets[16].id, swapEnabled: true, stableCoins: ["usdc"] },
-    { walletId: wallets[17].id, swapEnabled: false, stableCoins: ["usdt", "usdc"] },
+    { walletId: wallets[0].id, swapEnabled: true, stableCoin: "usdt" },
+    { walletId: wallets[1].id, swapEnabled: false, stableCoin: "usdt" },
+    { walletId: wallets[2].id, swapEnabled: true, stableCoin: "usdt" },
+    { walletId: wallets[3].id, swapEnabled: true, stableCoin: "usdc" },
+    { walletId: wallets[4].id, swapEnabled: false, stableCoin: "usdt" },
+    { walletId: wallets[5].id, swapEnabled: true, stableCoin: "usdt" },
+    { walletId: wallets[6].id, swapEnabled: true, stableCoin: "usdt" },
+    { walletId: wallets[7].id, swapEnabled: false, stableCoin: "usdc" },
+    { walletId: wallets[8].id, swapEnabled: true, stableCoin: "usdt" },
+    { walletId: wallets[9].id, swapEnabled: true, stableCoin: "usdt" },
+    { walletId: wallets[10].id, swapEnabled: false, stableCoin: "usdt" },
+    { walletId: wallets[11].id, swapEnabled: true, stableCoin: "usdc" },
+    { walletId: wallets[12].id, swapEnabled: true, stableCoin: "usdt" },
+    { walletId: wallets[13].id, swapEnabled: true, stableCoin: "usdt" },
+    { walletId: wallets[14].id, swapEnabled: false, stableCoin: "usdt" },
+    { walletId: wallets[15].id, swapEnabled: true, stableCoin: "usdt" },
+    { walletId: wallets[16].id, swapEnabled: true, stableCoin: "usdc" },
+    { walletId: wallets[17].id, swapEnabled: false, stableCoin: "usdt" },
   ].map((row) => ({ id: randomUUID(), ...row }));
 
   await prisma.swapSettings.createMany({ data: swapSettings });
@@ -771,7 +776,8 @@ async function main() {
       createdAt: dateDaysAgo(4),
       revokedAt: null,
       replacedByTokenHash: null,
-      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) Chrome/124.0.0.0",
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) Chrome/124.0.0.0",
       ip: "82.118.20.5",
     },
     {
@@ -781,7 +787,8 @@ async function main() {
       createdAt: dateDaysAgo(35),
       revokedAt: null,
       replacedByTokenHash: null,
-      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) Chrome/123.0.0.0",
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_4) Chrome/123.0.0.0",
       ip: "82.118.20.5",
     },
     {
@@ -821,7 +828,8 @@ async function main() {
       createdAt: dateDaysAgo(2),
       revokedAt: null,
       replacedByTokenHash: null,
-      userAgent: "Mozilla/5.0 (Windows NT 10.0; rv:126.0) Gecko/20100101 Firefox/126.0",
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; rv:126.0) Gecko/20100101 Firefox/126.0",
       ip: "176.36.10.55",
     },
     {

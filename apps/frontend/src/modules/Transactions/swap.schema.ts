@@ -4,7 +4,7 @@ import { TransactionResponseSchema } from "./transaction.schema";
 const SwapSettingsSchema = z.object({
   walletId: z.string(),
   swapEnabled: z.boolean(),
-  stableCoins: z.array(z.string()),
+  stableCoin: z.string(),
 });
 
 const CreateSwapDtoSchema = z.object({

@@ -49,9 +49,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
   const currentCoinInWallet = coinStats?.totalQuantity || 0;
   const averageBuyingPrice = coinStats?.avgBuyingPrice || 0;
   const swapEnabled = swapSettings?.swapEnabled ?? false;
-  const activeStableCoin = (
-    swapSettings?.stableCoins?.[0] || "usdt"
-  ).toUpperCase();
+  const activeStableCoin = (swapSettings?.stableCoin || "usdt").toUpperCase();
   const isLoading = isCreateTransactionLoading || isCreateSwapLoading;
 
   const handleChange = (
@@ -93,9 +91,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
 
     try {
       if (form.buyOrSell === "buy" && swapEnabled && payWithSwap) {
-        const stableCoin = (
-          swapSettings?.stableCoins?.[0] || "usdt"
-        ).toLowerCase();
+        const stableCoin = (swapSettings?.stableCoin || "usdt").toLowerCase();
         const totalToSpend = Number(
           form.total_price ||
             (Number(form.quantity) * Number(form.price)).toString(),
@@ -114,9 +110,7 @@ export function AddTransactionPopup({ coin }: { coin: Coin }) {
           },
         }).unwrap();
       } else if (form.buyOrSell === "sell" && swapEnabled && payWithSwap) {
-        const stableCoin = (
-          swapSettings?.stableCoins?.[0] || "usdt"
-        ).toLowerCase();
+        const stableCoin = (swapSettings?.stableCoin || "usdt").toLowerCase();
         const stableQuantity = Number(
           form.total_price ||
             (Number(form.quantity) * Number(form.price)).toString(),

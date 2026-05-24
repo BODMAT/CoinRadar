@@ -56,12 +56,16 @@ export function TransactionRow({
         {new Date(transaction.createdAt).toLocaleString()}
       </div>
 
-      <button
-        onClick={onEdit}
-        className="flex justify-center items-center hover:scale-110 transition-transform cursor-pointer"
-      >
-        <img className="w-6 h-6" src={EditSVG} alt="edit" />
-      </button>
+      {transaction.swapGroupId ? (
+        <div />
+      ) : (
+        <button
+          onClick={onEdit}
+          className="flex justify-center items-center hover:scale-110 transition-transform cursor-pointer"
+        >
+          <img className="w-6 h-6" src={EditSVG} alt="edit" />
+        </button>
+      )}
 
       <button
         onClick={onDelete}
