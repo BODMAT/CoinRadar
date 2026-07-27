@@ -14,7 +14,7 @@ export const CoinSchema = z.object({
   sparkline_in_7d: z.object({
     price: z.array(z.number()),
   }),
-  other: z.any(),
+  other: z.any().optional(),
 });
 
 export type Coin = z.infer<typeof CoinSchema>;
