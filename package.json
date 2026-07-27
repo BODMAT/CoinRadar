@@ -6,6 +6,7 @@
     "dev": "turbo run dev",
     "dev:frontend": "turbo run dev --filter=frontend",
     "dev:backend": "turbo run dev --filter=backend",
+    "dev:mobile": "pnpm --filter mobile run start",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:backend": "turbo run test --filter=backend",
@@ -34,9 +35,5 @@
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "npm@10.8.1",
-  "workspaces": [
-    "apps/backend",
-    "apps/frontend"
-  ]
+  "packageManager": "pnpm@11.17.0"
 }

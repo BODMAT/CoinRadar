@@ -1,0 +1,15 @@
+packages:
+  - "apps/*"
+# Pin: 5.1.2 types query/params as string | string[] and breaks backend.
+overrides:
+  '@types/express-serve-static-core': 5.1.0
+allowBuilds:
+  '@prisma/engines': true
+  '@swc/core': true
+  bcrypt: true
+  cpu-features: true
+  esbuild: true
+  prisma: true
+  protobufjs: true
+  ssh2: true
+  unrs-resolver: true
